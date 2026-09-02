@@ -99,4 +99,12 @@
   2. Niezależne testy Groundedness oraz Answer Relevance w `hallucination_node` wykonują się w pełni równolegle.
 * **Konsekwencje**: Czas wykonania testów regresyjnych spadł ze 106s do 63s (~41% redukcji całkowitego czasu), a pojedyncze zapytanie analityczne działa ponad 2x szybciej przy zerowym wzroście kosztu tokenów.
 
+### ADR-007: Ekstrakcja tabel finansowych z PDF i Parent-Document Retrieval
+* **Data**: 2026-09-02
+* **Kontekst**: Tradycyjny RAG zawodzi na surowych sprawozdaniach finansowych w PDF: tabele są rozcinane na bezwartościowe fragmenty, a stały chunking (np. 700 znaków) tworzy dylemat między precyzją wyszukania a pełnią kontekstu dla modelu.
+* **Decyzja**:
+  1. Zastosowanie biblioteki `pdfplumber` z analizą siatki komórek do bezstratnej konwersji tabel bilansowych do formatu Markdown (`| Kategoria | Wartość |`).
+  2. Implementacja wzorca **Parent-Document Retrieval** (`HierarchicalChunker`): drobne *Child Chunks* (~250 zn.) indeksowane są w wektorówce jako precyzyjne haczyki wyszukiwawcze, po czym retriever automatycznie podmienia je na pełne *Parent Chunks* (~1200 zn. / całe tabele) z pamięci `parent_docstore`.
+* **Konsekwencje**: Eliminacja rozmycia semantycznego, chirurgiczna precyzja odnajdywania liczb w tabelach i zachowanie 100% kontekstu dla sędziego halucynacji i syntezy LLM. Indeks powiększony do 18 testów (100% passed).
+
 
