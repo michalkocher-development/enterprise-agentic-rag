@@ -1,5 +1,5 @@
 ---
-title: BigTech Financial Agentic RAG
+title: Enterprise Agentic RAG Platform
 emoji: 🧠
 colorFrom: blue
 colorTo: indigo
@@ -10,19 +10,18 @@ pinned: false
 license: mit
 ---
 
-# 🧠 BigTech Financial Agentic RAG — AI Engineering & LLMOps
+# 🧠 Enterprise Agentic RAG Platform — AI Engineering & LLMOps
 
 [![Hugging Face Spaces](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-yellow)](https://huggingface.co/spaces)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch CUDA](https://img.shields.io/badge/PyTorch-2.6%20CUDA%2012.4-EE4C2C.svg?logo=pytorch)](https://pytorch.org/)
 [![LangGraph](https://img.shields.io/badge/Orchestration-LangGraph-orange.svg)](https://github.com/langchain-ai/langgraph)
+[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688.svg?logo=fastapi)](https://fastapi.tiangolo.com/)
 [![Gemini 3 Flash](https://img.shields.io/badge/LLM-Gemini%203%20Flash-4285F4.svg?logo=google)](https://ai.google.dev/)
 [![LangSmith Tracing](https://img.shields.io/badge/Observability-LangSmith-1C3C3C.svg)](https://smith.langchain.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-Zaawansowany, samonaprawczy system **Agentic RAG (Self-Corrective & CRAG)** oparty na **cyklicznych grafach stanów LangGraph**, łączący **lokalną inferencję PyTorch na GPU** (Cross-Encoder w `FP16`) z chmurowym modelem wnioskującym **Google Gemini 3 Flash** oraz pełnym monitoringiem telemetrycznym w **LangSmith**.
-
-System analizuje sprawozdawczość finansową i technologiczną **„Wielkiej Szóstki” Big Tech** (NVIDIA, Alphabet, Microsoft, Amazon AWS, Meta, Apple), koncentrując się na nakładach Capex, autorskich chipach krzemowych AI oraz marżach operacyjnych.
+Nowoczesna, wielodomenowa platforma **Agentic Document Intelligence & Self-Corrective RAG** oparta na **FastAPI**, cyklicznych grafach stanów **LangGraph**, lokalnej akceleracji **PyTorch na GPU (RTX 2050)** oraz dwufazowym potoku normalizacji dokumentów (PDF/Skany OCR ➔ Markdown Knowledge Lake ➔ Hierarchiczne Wektory).
 
 ---
 

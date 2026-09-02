@@ -5,10 +5,10 @@
 ---
 
 ## 1. Bieżący Status
-* **Status Ogólny**: 🟢 **Projekt 1 opublikowany na GitHubie!**
-* **Aktywny Projekt**: **Projekt 1 — BigTech Financial Agentic RAG**.
-* **Repozytorium GitHub**: [https://github.com/michalkocher-development/bigtech-financial-agentic-rag](https://github.com/michalkocher-development/bigtech-financial-agentic-rag)
-* **Aktualny Krok**: Kod źródłowy, testy (14/14 passed), architektura hybrydowa PyTorch CUDA + Gemini 3 Flash oraz profesjonalne `README.md` zostały zacommitowane i wypchnięte do repozytorium. Ready for Project 2!
+* **Status Ogólny**: 🟢 **Nowe repozytorium utworzone: `enterprise-agentic-rag`!**
+* **Aktywny Projekt**: **Enterprise Agentic Document Intelligence & RAG Platform**.
+* **Repozytorium GitHub**: [https://github.com/michalkocher-development/enterprise-agentic-rag](https://github.com/michalkocher-development/enterprise-agentic-rag)
+* **Aktualny Krok**: Utworzono niezależny silnik normalizacji dokumentów `DocumentNormalizer` z obsługą tabel (`pdfplumber`), skanów OCR (`RapidOCR`) i zapisem do Markdown Knowledge Lake. Testy (3/3) na zielono. Ready for Fast API & Memory!
 
 ---
 
@@ -116,5 +116,17 @@
      - Automatyczny fallback inferencji PyTorch: CUDA na maszynie deweloperskiej, CPU w chmurze HF Spaces.
      - Metadane YAML w `README.md`.
 * **Konsekwencje**: Pełna wizualizacja procesu myślenia agenta na żywo, natychmiastowe uruchomienie aplikacji z dyskowego cache'u i możliwość 1-kliknięciowego udostępnienia działającego demo w chmurze. Zestaw testów rozszerzony do 21/21 passed.
+
+### ADR-009: Dwufazowy potok Ingestion (Normalizer z OCR ➔ Markdown Knowledge Lake ➔ Baza Wektorowa)
+* **Data**: 2026-09-02
+* **Kontekst**: Bezpośrednie indeksowanie chaotycznych plików PDF i skanów do bazy wektorowej powodowało rozmycie semantyczne i brak możliwości audytu tego, co agent "wie".
+* **Decyzja**:
+  1. Wdrożenie klasy `DocumentNormalizer` z hybrydową ekstrakcją:
+     - Dla PDF cyfrowych: `pdfplumber` (tabele do Markdown + czysty tekst),
+     - Dla skanów i obrazów: silnik OCR `RapidOCR` (`rapidocr-onnxruntime`) działający w pamięci bez zewnętrznych instalatorów binarnych C++.
+  2. Zapisywanie znormalizowanych dokumentów jako pliki `.md` z nagłówkiem YAML Frontmatter w strukturze `data/knowledge_base/<domena>/<plik>.md`.
+  3. Baza wektorowa indeksuje czysty Markdown, co daje wyższą jakość embeddingów i pełną transparentność dla dewelopera/użytkownika.
+* **Konsekwencje**: 100% audytowalność bazy wiedzy w Git, obsługa skanów/obrazów/PDF/TXT, moduł w pełni przetestowany niezależnie (`test_document_normalizer.py`).
+
 
 
