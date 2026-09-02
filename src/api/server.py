@@ -1,5 +1,6 @@
 """Główna aplikacja FastAPI: punkty końcowe REST, streaming SSE oraz automatyczny Swagger UI."""
 
+import asyncio
 import json
 import os
 import shutil
@@ -295,7 +296,7 @@ def chat_endpoint(request: ChatRequest) -> ChatResponse:
 
 @app.post("/api/v1/chat/stream", tags=["Agentic Core"])
 async def chat_stream_endpoint(request: ChatRequest):
-    """Strumieniowanie Server-Sent Events (SSE): przesyła zdarzenia węzłów oraz tokeny w czasie rzeczywistym."""
+    """Strumieniowanie Server-Sent Events (SSE): przesyła zdarzenia węzłów, szczegółowe metryki GPU i tokeny w czasie rzeczywistym."""
     thread_id = request.thread_id or f"session-{os.urandom(4).hex()}"
 
     initial_state: GraphState = {
@@ -319,23 +320,96 @@ async def chat_stream_endpoint(request: ChatRequest):
     }
 
     async def event_generator() -> AsyncGenerator[str, None]:
-        yield f"event: session\ndata: {json.dumps({'thread_id': thread_id})}\n\n"
+        t0 = time.time()
+        last_step_time = t0
 
-        for event in agent_app.stream(initial_state, config=config):
+        yield f"event: session\ndata: {json.dumps({'thread_id': thread_id})}\n\n"
+        await asyncio.sleep(0.01)
+
+        async for event in agent_app.astream(initial_state, config=config):
+            now = time.time()
+            step_latency_ms = round((now - last_step_time) * 1000, 1)
+            total_elapsed_ms = round((now - t0) * 1000, 1)
+            last_step_time = now
+
             for node_name, state_update in event.items():
                 payload = {
                     "node": node_name,
+                    "latency_ms": step_latency_ms,
+                    "total_ms": total_elapsed_ms,
                     "route": state_update.get("route"),
                     "documents_count": len(state_update.get("documents", [])),
-                    "rerank_scores": [round(s, 3) for s in state_update.get("rerank_scores", [])[:3]],
+                    "rerank_scores": [round(s, 3) for s in state_update.get("rerank_scores", [])],
                     "generation": state_update.get("generation"),
                     "hallucination_grade": state_update.get("hallucination_grade"),
+                    "answer_grade": state_update.get("answer_grade"),
+                    "web_search_needed": state_update.get("web_search_needed", False),
                 }
+
+                # Pełna telemetria kandydatów i tabel
+                if node_name == "retrieve":
+                    docs = state_update.get("documents", [])
+                    payload["candidates"] = [
+                        {
+                            "index": idx + 1,
+                            "filename": d.metadata.get("filename", "unknown"),
+                            "company": d.metadata.get("company", d.metadata.get("domain", "general")),
+                            "is_table": d.metadata.get("is_table", False),
+                            "preview": d.page_content[:300],
+                            "full_text": d.page_content,
+                        }
+                        for idx, d in enumerate(docs[:6])
+                    ]
+
+                elif node_name == "local_rerank":
+                    docs = state_update.get("documents", [])
+                    scores = state_update.get("rerank_scores", [])
+                    payload["gpu_device"] = (
+                        "NVIDIA GeForce RTX 2050 (FP16)" if torch.cuda.is_available() else "CPU Mode"
+                    )
+                    payload["vram_mb"] = (
+                        round(torch.cuda.memory_allocated(0) / (1024 * 1024), 2)
+                        if torch.cuda.is_available()
+                        else 0.0
+                    )
+                    payload["ranked_candidates"] = [
+                        {
+                            "rank": idx + 1,
+                            "filename": d.metadata.get("filename", "unknown"),
+                            "score": round(scores[idx], 3) if idx < len(scores) else 0.0,
+                            "is_table": d.metadata.get("is_table", False),
+                            "preview": d.page_content[:250],
+                            "full_text": d.page_content,
+                        }
+                        for idx, d in enumerate(docs[:6])
+                    ]
+
+                elif node_name == "generate":
+                    docs = state_update.get("documents", [])
+                    payload["citations"] = [
+                        {
+                            "filename": d.metadata.get("filename", "unknown"),
+                            "company": d.metadata.get("company", "general"),
+                            "is_table": d.metadata.get("is_table", False),
+                            "snippet": d.page_content[:400],
+                            "full_text": d.page_content,
+                        }
+                        for d in docs[:4]
+                    ]
+
                 yield f"event: step\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n"
+                await asyncio.sleep(0.01)
 
-        yield f"event: complete\ndata: {json.dumps({'status': 'done', 'thread_id': thread_id})}\n\n"
+        total_time_ms = round((time.time() - t0) * 1000, 1)
+        yield f"event: complete\ndata: {json.dumps({'status': 'done', 'thread_id': thread_id, 'total_time_ms': total_time_ms})}\n\n"
 
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    headers = {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",
+    }
+    return StreamingResponse(event_generator(), media_type="text/event-stream", headers=headers)
 
 
 # Montowanie statycznego frontendu na ścieżce głównej / (po zarejestrowaniu endpointów API)
