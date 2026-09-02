@@ -1,6 +1,7 @@
-"""Kompilacja cyklicznego grafu stanów LangGraph (Self-Corrective Agentic RAG)."""
+"""Kompilacja cyklicznego grafu stanów LangGraph (Self-Corrective & Adaptive Agentic RAG)."""
 
-from typing import Literal
+from typing import Any, Literal, Optional
+from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 
 from src.nodes import (
@@ -10,8 +11,14 @@ from src.nodes import (
     rerank_node,
     retrieve_node,
     rewrite_node,
+    route_question_node,
 )
 from src.state import GraphState
+
+
+def route_decision_edge(state: GraphState) -> Literal["retrieve", "direct_answer"]:
+    """Krawędź warunkowa Routera: RAG w bazie dokumentów vs odpowiedź z pamięci rozmowy."""
+    return state.get("route", "retrieve")
 
 
 def decide_to_generate(state: GraphState) -> Literal["generate", "rewrite_query"]:
@@ -29,6 +36,13 @@ def decide_to_generate(state: GraphState) -> Literal["generate", "rewrite_query"
         return "rewrite_query"
 
     return "generate"
+
+
+def decide_after_generate(state: GraphState) -> Literal["hallucination_check", "end"]:
+    """Jeśli odpowiedź pochodzi z pamięci dialogu (direct_answer), kończymy bez badania ugruntowania w dokumentach."""
+    if state.get("route") == "direct_answer":
+        return "end"
+    return "hallucination_check"
 
 
 def grade_generation_v_documents_and_question(
@@ -50,11 +64,16 @@ def grade_generation_v_documents_and_question(
     return "not grounded" if (regeneration_count < 1 and retry_count < 2) else "useful"
 
 
-def create_agentic_rag_graph():
-    """Tworzy i kompiluje pełny cykliczny graf StateGraph."""
+# Wspólny checkpointer pamięci konwersacyjnej w pamięci RAM
+global_memory = MemorySaver()
+
+
+def create_agentic_rag_graph(checkpointer: Optional[Any] = global_memory):
+    """Tworzy i kompiluje pełny cykliczny graf StateGraph z pamięcią konwersacyjną i Routerem."""
     workflow = StateGraph(GraphState)
 
-    # Rejestracja węzłów
+    # 1. Rejestracja węzłów
+    workflow.add_node("router", route_question_node)
     workflow.add_node("retrieve", retrieve_node)
     workflow.add_node("local_rerank", rerank_node)
     workflow.add_node("grade_documents", grade_documents_node)
@@ -62,12 +81,24 @@ def create_agentic_rag_graph():
     workflow.add_node("generate", generate_node)
     workflow.add_node("hallucination_check", hallucination_node)
 
-    # Krawędzie statyczne
-    workflow.add_edge(START, "retrieve")
+    # 2. Punkt startowy -> Router
+    workflow.add_edge(START, "router")
+
+    # 3. Krawędź warunkowa: Router decyduje (retrieve vs direct_answer)
+    workflow.add_conditional_edges(
+        "router",
+        route_decision_edge,
+        {
+            "retrieve": "retrieve",
+            "direct_answer": "generate",
+        },
+    )
+
+    # 4. Potok pobierania i rerankingu
     workflow.add_edge("retrieve", "local_rerank")
     workflow.add_edge("local_rerank", "grade_documents")
 
-    # Krawędź warunkowa: czy generować, czy poprawić zapytanie?
+    # 5. Krawędź warunkowa: generowanie czy przepisanie zapytania
     workflow.add_conditional_edges(
         "grade_documents",
         decide_to_generate,
@@ -77,13 +108,20 @@ def create_agentic_rag_graph():
         },
     )
 
-    # Pętla samonaprawcza: powrót do wyszukiwania z nowym zapytaniem
+    # 6. Pętla samonaprawcza
     workflow.add_edge("rewrite_query", "retrieve")
 
-    # Weryfikacja jakości wygenerowanej odpowiedzi
-    workflow.add_edge("generate", "hallucination_check")
+    # 7. Po wygenerowaniu: bezpośredni koniec dla direct_answer lub audyt halucynacji dla RAG
+    workflow.add_conditional_edges(
+        "generate",
+        decide_after_generate,
+        {
+            "hallucination_check": "hallucination_check",
+            "end": END,
+        },
+    )
 
-    # Krawędź warunkowa ewaluacji halucynacji
+    # 8. Krawędź warunkowa ewaluacji halucynacji
     workflow.add_conditional_edges(
         "hallucination_check",
         grade_generation_v_documents_and_question,
@@ -94,8 +132,44 @@ def create_agentic_rag_graph():
         },
     )
 
-    return workflow.compile()
+    compiled = workflow.compile(checkpointer=checkpointer)
+    return StatefulAgentGraph(compiled)
 
 
-# Kompilacja domyślnej aplikacji
+class StatefulAgentGraph:
+    """Wrapper zapewniający wsteczną kompatybilność z wywołaniami bez jawnego thread_id."""
+
+    def __init__(self, compiled_graph):
+        self._graph = compiled_graph
+
+    def invoke(self, input, config=None, **kwargs):
+        config = self._ensure_thread_id(config)
+        return self._graph.invoke(input, config=config, **kwargs)
+
+    def stream(self, input, config=None, **kwargs):
+        config = self._ensure_thread_id(config)
+        return self._graph.stream(input, config=config, **kwargs)
+
+    async def astream(self, input, config=None, **kwargs):
+        config = self._ensure_thread_id(config)
+        async for chunk in self._graph.astream(input, config=config, **kwargs):
+            yield chunk
+
+    @staticmethod
+    def _ensure_thread_id(config):
+        if config is None:
+            return {"configurable": {"thread_id": "default-session"}}
+        cfg = dict(config)
+        if "configurable" not in cfg or "thread_id" not in cfg["configurable"]:
+            configurable = dict(cfg.get("configurable", {}))
+            configurable.setdefault("thread_id", "default-session")
+            cfg["configurable"] = configurable
+        return cfg
+
+    def __getattr__(self, name):
+        return getattr(self._graph, name)
+
+
+# Kompilacja domyślnej aplikacji z pamięcią
 app = create_agentic_rag_graph()
+

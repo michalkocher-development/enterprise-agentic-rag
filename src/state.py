@@ -1,11 +1,16 @@
 """Definicja stanu grafu (GraphState) przepływającego przez węzły LangGraph."""
 
-from typing import List, Optional, TypedDict
+from typing import Annotated, List, Optional, TypedDict
 from langchain_core.documents import Document
+from langchain_core.messages import BaseMessage
+from langgraph.graph.message import add_messages
 
 
 class GraphState(TypedDict):
-    """Stan reprezentujący cykl życia zapytania w grafie Self-Corrective RAG."""
+    """Stan reprezentujący cykl życia zapytania w grafie Self-Corrective RAG z pamięcią konwersacyjną."""
+
+    messages: Annotated[List[BaseMessage], add_messages]
+    """Historia wiadomości w ramach wątku (thread_id) do obsługi dialogu wieloturowego."""
 
     question: str
     """Aktualne pytanie (może być modyfikowane przez węzeł rewrite)."""
@@ -36,3 +41,6 @@ class GraphState(TypedDict):
 
     web_search_needed: bool
     """Flaga sygnalizująca brak odpowiedzi w wewnętrznych raportach."""
+
+    route: Optional[str]
+    """Kierunek wyznaczony przez Router: 'retrieve' (wymaga RAG) lub 'direct_answer' (odpowiedź z pamięci)."""

@@ -6,6 +6,7 @@ from src.nodes.grade_node import grade_documents_node
 from src.nodes.rewrite_node import rewrite_node
 from src.nodes.generate_node import generate_node
 from src.nodes.hallucination_node import hallucination_node
+from src.nodes.router_node import route_question_node
 
 __all__ = [
     "retrieve_node",
@@ -14,4 +15,5 @@ __all__ = [
     "rewrite_node",
     "generate_node",
     "hallucination_node",
+    "route_question_node",
 ]

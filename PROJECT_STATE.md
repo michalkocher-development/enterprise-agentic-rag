@@ -128,5 +128,15 @@
   3. Baza wektorowa indeksuje czysty Markdown, co daje wyższą jakość embeddingów i pełną transparentność dla dewelopera/użytkownika.
 * **Konsekwencje**: 100% audytowalność bazy wiedzy w Git, obsługa skanów/obrazów/PDF/TXT, moduł w pełni przetestowany niezależnie (`test_document_normalizer.py`).
 
+### ADR-010: Pamięć Konwersacyjna, Adaptive RAG i Rozproszony Serwer FastAPI
+* **Data**: 2026-09-02
+* **Kontekst**: Potrzebna była obsługa dialogu wieloturowego (pamięć wcześniejszych pytań bez marnowania tokenów i czasu na niepotrzebny RAG), profesjonalne REST API ze Swagger UI (`/docs`) oraz niezależny frontend webowy bez narzutów Gradio.
+* **Decyzja**:
+  1. Wdrożenie `MemorySaver` w LangGraph wraz z węzłem `route_question_node`: dopytania użytkownika nawiązujące do historii dialogu są obsługiwane bezpośrednio (`direct_answer`), a nowy RAG odpala się tylko przy pytaniach o nowe fakty.
+  2. Budowa serwera FastAPI z modelami Pydantic v2, endpointem uploadu i OCR (`/api/v1/documents/upload`), streamingiem zdarzeń węzłów przez Server-Sent Events (`/api/v1/chat/stream`) oraz interaktywną dokumentacją Swagger pod `/docs`.
+  3. Serwowanie dedykowanego frontendu HTML5 + Tailwind CSS a la Perplexity bezpośrednio na ścieżce głównej `/`.
+* **Konsekwencje**: Pełna separacja warstw (REST API vs Frontend), pamięć konwersacyjna (`thread_id`), streaming SSE, 30/30 testów regresyjnych na zielono.
+
+
 
 
