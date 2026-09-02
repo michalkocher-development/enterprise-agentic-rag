@@ -6,7 +6,7 @@
   <title>Enterprise Agentic RAG — Workbench</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@110,600;110,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Marked.js for Markdown -->
@@ -18,22 +18,23 @@
       theme: {
         extend: {
           colors: {
-            bg: '#08090A',
-            panel: '#0D0F10',
-            raised: '#14171A',
-            line: 'rgba(255,255,255,0.08)',
-            line2: 'rgba(255,255,255,0.14)',
-            fg: '#E8EAED',
-            fg2: '#9AA0A6',
-            fg3: '#666B70',
+            bg: '#060708',
+            panel: '#101317',
+            raised: '#191D23',
+            line: 'rgba(255,255,255,0.06)',
+            line2: 'rgba(255,255,255,0.12)',
+            fg: '#E9ECF1',
+            fg2: '#9BA3AF',
+            fg3: '#646C78',
             live: '#6C8CFF',
             ok: '#3FBF8F',
             warn: '#E0A44A',
             bad: '#E2564D'
           },
           fontFamily: {
-            sans: ['Inter', 'system-ui', 'sans-serif'],
-            mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace']
+            sans: ['"IBM Plex Sans"', 'system-ui', 'sans-serif'],
+            mono: ['"IBM Plex Mono"', 'ui-monospace', 'monospace'],
+            display: ['Archivo', '"IBM Plex Sans"', 'system-ui', 'sans-serif']
           }
         }
       }
@@ -41,45 +42,109 @@
   </script>
   <style>
     :root {
-      --bg: #08090A; --panel: #0D0F10; --raised: #14171A;
-      --line: rgba(255,255,255,.08); --line2: rgba(255,255,255,.14);
-      --fg: #E8EAED; --fg2: #9AA0A6; --fg3: #666B70;
+      --bg: #060708; --panel: #101317; --raised: #191D23; --output: #1E232B;
+      --line: rgba(255,255,255,.06); --line2: rgba(255,255,255,.12);
+      --edge-top: rgba(255,255,255,.07);
+      --fg: #E9ECF1; --fg2: #9BA3AF; --fg3: #646C78;
       --live: #6C8CFF; --ok: #3FBF8F; --warn: #E0A44A; --bad: #E2564D;
     }
     html, body { background: var(--bg); height: 100%; }
-    body { font-family: Inter, system-ui, sans-serif; -webkit-font-smoothing: antialiased; margin: 0; }
+    body { font-family: "IBM Plex Sans", system-ui, sans-serif; -webkit-font-smoothing: antialiased; margin: 0; }
+    .font-display { font-family: Archivo, "IBM Plex Sans", system-ui, sans-serif; font-stretch: 110%; }
+
+    /* Ziarno: jedna warstwa atmosferyczna zdejmująca płaskość czerni */
+    body::after {
+      content: ''; position: fixed; inset: 0; z-index: 9999; pointer-events: none;
+      opacity: .035; mix-blend-mode: overlay;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    /* Elewacja zamiast obrysu: światło pada z góry */
+    .panel-lift {
+      background: var(--panel);
+      box-shadow:
+        inset 0 1px 0 var(--edge-top),
+        0 1px 2px rgba(0,0,0,.55),
+        0 14px 34px -18px rgba(0,0,0,.9);
+    }
+    .panel-sunk { background: var(--bg); box-shadow: inset 0 1px 0 rgba(255,255,255,.04); }
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.1); border-radius: 4px; border: 2px solid transparent; background-clip: content-box; }
     ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.2); background-clip: content-box; }
     ::-webkit-scrollbar-track { background: transparent; }
     :focus-visible { outline: 2px solid var(--live); outline-offset: 2px; border-radius: 6px; }
 
+    /* Pas grafu: maszyna emituje światło */
+    .graph-strip { position: relative; }
+    .graph-strip::before {
+      content: ''; position: absolute; inset: -10% -5% 0 -5%; pointer-events: none;
+      background: radial-gradient(115% 150% at 50% 125%, rgba(108,140,255,.09), transparent 62%);
+      transition: opacity .8s ease, background .8s ease; opacity: .8;
+    }
+    .graph-strip.is-running::before {
+      background: radial-gradient(115% 150% at 50% 125%, rgba(108,140,255,.20), transparent 66%);
+      opacity: 1;
+    }
+    .graph-strip.is-ambient .gnode, .graph-strip.is-ambient .edge { opacity: .42; filter: saturate(.65); }
+    .graph-strip .gnode, .graph-strip .edge { transition: opacity .6s ease, filter .6s ease; }
+
     /* SVG Graph & Edge Flow Animations */
     .edge-base { fill: none; stroke: var(--line2); stroke-width: 1.25; transition: stroke .4s ease; }
-    .edge-flow { fill: none; stroke: var(--live); stroke-width: 1.75; stroke-dasharray: 5 11; stroke-linecap: round; opacity: 0; transition: opacity .25s; }
+    .edge-flow { fill: none; stroke: var(--live); stroke-width: 2; stroke-dasharray: 5 11; stroke-linecap: round; opacity: 0; transition: opacity .25s; }
     .edge.is-taken .edge-base { stroke: rgba(108,140,255,.5); }
     .edge.is-flowing .edge-flow { opacity: 1; animation: dashmove .9s linear infinite; }
+    .edge.is-flowing .edge-base { stroke: rgba(108,140,255,.65); }
     .edge.is-loop.is-taken .edge-base { stroke: rgba(224,164,74,.55); }
     .edge.is-loop .edge-flow { stroke: var(--warn); }
     @keyframes dashmove { to { stroke-dashoffset: -32; } }
 
-    /* Node States */
-    .gnode-box { fill: var(--raised); stroke: var(--line); stroke-width: 1; transition: stroke .35s, fill .35s, opacity .35s; }
-    .gnode-title { fill: var(--fg2); font-size: 12.5px; font-weight: 500; transition: fill .35s; }
-    .gnode-meta { fill: var(--fg3); font-size: 10.5px; font-family: "JetBrains Mono", monospace; transition: fill .35s; }
-    .gnode-ring { fill: none; stroke: var(--live); stroke-width: 1; opacity: 0; transform-box: fill-box; transform-origin: center; }
-    .gnode[data-state="active"] .gnode-box { stroke: var(--live); fill: rgba(108,140,255,.10); }
-    .gnode[data-state="active"] .gnode-title { fill: var(--fg); }
-    .gnode[data-state="active"] .gnode-meta { fill: var(--live); }
-    .gnode[data-state="active"] .gnode-ring { animation: ring 1.8s ease-out infinite; }
-    .gnode[data-state="done"] .gnode-box { stroke: rgba(63,191,143,.42); }
-    .gnode[data-state="done"] .gnode-meta { fill: var(--ok); }
-    .gnode[data-state="idle"] .gnode-box { opacity: .55; }
-    .gnode[data-state="idle"] .gnode-title { opacity: .75; }
-    @keyframes ring { 0% { opacity: .55; transform: scale(1); } 100% { opacity: 0; transform: scale(1.07); } }
+    /* Choreografia wejścia: krawędzie rysują się, węzły wchodzą kaskadą */
+    .edge-base { stroke-dasharray: 1; stroke-dashoffset: 1; animation: drawEdge .75s cubic-bezier(.4,0,.2,1) forwards; }
+    @keyframes drawEdge { to { stroke-dashoffset: 0; } }
+    .gnode { animation: nodeIn .55s cubic-bezier(.22,.61,.36,1) both; }
+    @keyframes nodeIn { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
 
-    .edge-label { fill: var(--fg3); font-size: 10px; font-family: "JetBrains Mono", monospace; opacity: .7; transition: opacity .35s, fill .35s; paint-order: stroke fill; stroke: var(--bg); stroke-width: 3px; stroke-linejoin: round; }
+    /* Węzły: kształt niesie rolę */
+    .gnode-box { fill: var(--raised); stroke: var(--line2); stroke-width: 1; transition: stroke .35s, fill .35s, opacity .35s, filter .35s; }
+    .gnode-title { fill: var(--fg2); font-size: 13px; font-weight: 500; font-family: "IBM Plex Sans", sans-serif; transition: fill .35s; }
+    .gnode-meta { fill: var(--fg3); font-size: 11.5px; font-family: "IBM Plex Mono", monospace; transition: fill .35s; }
+    .gnode-eyebrow { fill: var(--fg3); font-size: 10px; font-family: "IBM Plex Mono", monospace; letter-spacing: .08em; transition: fill .35s; }
+
+    .gnode[data-role="output"] .gnode-box { fill: var(--output); }
+    .gnode[data-role="local"] .gnode-box { fill: #14191F; stroke: rgba(255,255,255,.16); }
+    .gnode[data-role="local"] .gnode-title { fill: var(--fg); font-weight: 600; }
+
+    .gnode[data-state="active"] .gnode-box { stroke: var(--live); fill: rgba(108,140,255,.12); filter: drop-shadow(0 0 9px rgba(108,140,255,.55)); }
+    .gnode[data-state="active"] .gnode-title { fill: #fff; }
+    .gnode[data-state="active"] .gnode-meta, .gnode[data-state="active"] .gnode-eyebrow { fill: var(--live); }
+    .gnode[data-state="done"] .gnode-box { stroke: rgba(63,191,143,.45); }
+    .gnode[data-state="done"] .gnode-meta { fill: var(--ok); }
+    .gnode[data-state="idle"] .gnode-box { opacity: .72; }
+
+    .edge-label { fill: var(--fg3); font-size: 10px; font-family: "IBM Plex Mono", monospace; opacity: .7; transition: opacity .35s, fill .35s; paint-order: stroke fill; stroke: var(--bg); stroke-width: 3px; stroke-linejoin: round; }
     .edge-label.is-hot { opacity: 1; fill: var(--warn); }
+
+    /* ── Taśma przebiegu: gdzie poszedł czas i co kosztowało ── */
+    .tape-seg {
+      position: relative; height: 22px; border-radius: 3px; min-width: 3px;
+      display: flex; align-items: center; justify-content: center; overflow: hidden;
+      cursor: default; transition: transform .2s ease, filter .2s ease;
+      animation: tapeIn .5s cubic-bezier(.22,.61,.36,1) both;
+    }
+    @keyframes tapeIn { from { transform: scaleX(.4); opacity: 0; } to { transform: none; opacity: 1; } }
+    .tape-seg:hover { filter: brightness(1.35); }
+    /* Wypełnione = chmura, czyli zapłacone tokeny */
+    .tape-seg[data-cost="cloud"] { background: rgba(108,140,255,.8); }
+    .tape-seg[data-cost="cloud"] .tape-lbl { color: #0A0C10; }
+    /* Ażurowe = lokalna RTX 2050, czyli zero kosztu */
+    .tape-seg[data-cost="local"] {
+      background: repeating-linear-gradient(135deg, rgba(108,140,255,.55) 0 2px, transparent 2px 6px);
+      box-shadow: inset 0 0 0 1px rgba(108,140,255,.55);
+    }
+    .tape-seg[data-cost="local"] .tape-lbl { color: #C3D0FF; }
+    .tape-lbl { font-family: "IBM Plex Mono", monospace; font-size: 10px; white-space: nowrap; padding: 0 5px; letter-spacing: .02em; }
+    .tape-swatch { display: inline-block; width: 14px; height: 8px; border-radius: 2px; vertical-align: middle; }
+    .tl-section.is-tapelit { box-shadow: 0 0 0 1px rgba(108,140,255,.55); }
 
     /* Dynamic Reranker List Reordering */
     .rank-list { position: relative; transition: height .55s cubic-bezier(.22,.61,.36,1); }
@@ -91,9 +156,14 @@
     .tl-section { animation: slidein .35s cubic-bezier(.22,.61,.36,1) both; }
     @keyframes slidein { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
-    /* Blinking Caret for Token Streaming */
-    .caret::after { content: ''; display: inline-block; width: 7px; height: 1.1em; background: var(--live); vertical-align: -2px; margin-left: 2px; animation: blink 1s steps(2) infinite; }
-    @keyframes blink { 50% { opacity: 0; } }
+    /* Ujawnienie odpowiedzi: kulminacja przebiegu, jedna orkiestrowana sekwencja */
+    .answer-reveal { animation: wipeIn .6s cubic-bezier(.22,.61,.36,1) both; }
+    @keyframes wipeIn {
+      from { opacity: 0; clip-path: inset(0 0 100% 0); transform: translateY(-4px); }
+      to   { opacity: 1; clip-path: inset(0 0 0 0);    transform: none; }
+    }
+    .chip-in { animation: chipIn .34s cubic-bezier(.22,.61,.36,1) both; }
+    @keyframes chipIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
 
     /* Bidirectional Citations & Chunk Rows */
     .cite { cursor: pointer; transition: background .2s, border-color .2s; }
@@ -101,13 +171,23 @@
     .chunk-row.is-highlit { border-color: rgba(108,140,255,.7); background: rgba(108,140,255,.1); }
 
     /* Markdown Formatting for Answers */
-    .prose-answer table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.8rem; font-family: "JetBrains Mono", monospace; }
+    .prose-answer table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.8rem; font-family: "IBM Plex Mono", monospace; }
     .prose-answer th, .prose-answer td { border: 1px solid rgba(255,255,255,.1); padding: 6px 10px; text-align: left; }
     .prose-answer th { background: rgba(255,255,255,.04); color: var(--fg); font-weight: 600; }
     .prose-answer tr:nth-child(even) { background: rgba(255,255,255,.02); }
     .prose-answer strong { color: #FFFFFF; font-weight: 600; }
     .prose-answer ul { list-style: square; padding-left: 18px; margin: 8px 0; }
-    .prose-answer code { background: var(--raised); border: 1px solid var(--line); padding: 1px 4px; border-radius: 4px; font-family: "JetBrains Mono", monospace; font-size: 0.85em; }
+    .prose-answer code { background: var(--raised); border: 1px solid var(--line); padding: 1px 4px; border-radius: 4px; font-family: "IBM Plex Mono", monospace; font-size: 0.85em; }
+
+    /* Niskie okna: graf oddaje wysokość kolumnom, bo to one niosą treść. */
+    @media (max-height: 780px) {
+      .graph-strip svg { max-height: 172px; }
+    }
+    @media (max-height: 660px) {
+      .graph-strip svg { max-height: 132px; }
+      .graph-strip .edge-label { opacity: .45; }
+      #runTape .tape-legend { display: none; }
+    }
 
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
@@ -126,8 +206,8 @@
     <!-- Brand / Logo -->
     <div class="flex items-center gap-2.5">
       <span class="w-2.5 h-2.5 rounded-full bg-live shrink-0 animate-pulse"></span>
-      <span class="text-[14.5px] font-semibold tracking-tight whitespace-nowrap">Enterprise Agentic RAG</span>
-      <span class="text-[12px] text-fg3 hidden xl:inline" data-i18n="tagline"></span>
+      <span class="text-[15px] font-semibold tracking-tight whitespace-nowrap">Enterprise Agentic RAG</span>
+      <span class="text-[13px] text-fg3 hidden xl:inline" data-i18n="tagline"></span>
     </div>
 
     <!-- Right Controls -->
@@ -138,7 +218,7 @@
          class="hidden sm:flex items-center gap-1.5 px-2.5 h-7 rounded-lg border border-line bg-panel hover:border-line2 hover:bg-raised transition group cursor-pointer"
          title="Otwórz dokumentację interaktywną Swagger UI (/docs)">
         <i data-lucide="file-code" class="w-3.5 h-3.5 text-fg3 group-hover:text-live transition" stroke-width="1.75"></i>
-        <span class="font-mono text-[10.5px] text-fg2 group-hover:text-white transition">Swagger API</span>
+        <span class="font-mono text-[11.5px] text-fg2 group-hover:text-white transition">Swagger API</span>
         <i data-lucide="external-link" class="w-3 h-3 text-fg3 group-hover:text-live transition" stroke-width="2"></i>
       </a>
 
@@ -148,8 +228,8 @@
          class="hidden sm:flex items-center gap-1.5 px-2.5 h-7 rounded-lg border border-line bg-panel hover:border-line2 hover:bg-raised transition group cursor-pointer"
          title="Otwórz projekt w panelu LangSmith (nowa karta)">
         <span class="w-1.5 h-1.5 rounded-full bg-fg3" id="langsmithDot"></span>
-        <span class="font-mono text-[10.5px] text-fg2 group-hover:text-white transition">LangSmith</span>
-        <span class="font-mono text-[9.5px] text-fg3" id="langsmithStatus">...</span>
+        <span class="font-mono text-[11.5px] text-fg2 group-hover:text-white transition">LangSmith</span>
+        <span class="font-mono text-[10px] text-fg3" id="langsmithStatus">...</span>
         <i data-lucide="external-link" class="w-3 h-3 text-fg3 group-hover:text-live transition" stroke-width="2"></i>
       </a>
 
@@ -179,113 +259,135 @@
 <!-- ═════════════════════════════════════════════════════════════════════════
      2. PAS GRAFU STANÓW (SVG STATE MACHINE)
 ══════════════════════════════════════════════════════════════════════════ -->
-<section class="shrink-0 border-b border-line bg-panel/40">
-  <div class="mx-auto max-w-[1520px] px-5 pt-2.5 pb-1.5">
+<section id="graphStrip" class="graph-strip shrink-0 border-b border-line bg-panel/30">
+  <div class="mx-auto max-w-[1520px] px-5 pt-2.5 pb-2 relative">
     <div class="flex items-center gap-3 h-5 mb-0.5">
       <h2 class="text-[11.5px] font-medium text-fg3 uppercase tracking-wider font-mono" data-i18n="graphTitle">Graf stanu LangGraph</h2>
-      
+
+      <!-- Znacznik trybu ambient (odtwarzanie zapisanego przebiegu przy bezczynności) -->
+      <span id="ambientBadge" class="hidden items-center gap-1.5 px-1.5 h-[19px] rounded border border-line2 bg-raised text-fg3 font-mono text-[10px]">
+        <span class="w-1 h-1 rounded-full bg-fg3"></span><span data-i18n="ambient">podgląd demo</span>
+      </span>
+
       <!-- Pętla samonaprawcza badge -->
       <span id="loopBadge" class="hidden items-center gap-1 px-1.5 h-[19px] rounded border border-warn/40 bg-warn/10 text-warn font-mono text-[10px]">
         <span data-i18n="loopBadge">Autokorekta: </span><span id="loopCount">1/2</span>
       </span>
 
       <!-- Telemetria na żywo -->
-      <div class="ml-auto flex items-center gap-4 font-mono text-[10.5px] text-fg3">
+      <div class="ml-auto flex items-center gap-4 font-mono text-[11.5px] text-fg3">
         <span><span data-i18n="latency">Czas</span>: <span id="hdrLatency" class="text-fg font-medium">0.00s</span></span>
         <span class="hidden sm:inline"><span data-i18n="tokens">Tokeny</span>: <span id="hdrTokens" class="text-fg font-medium">0</span></span>
-        <button id="resetBtn" class="text-fg3 hover:text-fg transition text-[11px]" data-i18n="reset">Reset</button>
+        <button id="resetBtn" class="text-fg3 hover:text-fg transition text-[11.5px]" data-i18n="reset">Reset</button>
       </div>
     </div>
 
-    <!-- SVG Graph Layout (1400x192) z powiększoną wysokością -->
-    <svg viewBox="0 0 1400 192" class="w-full h-auto max-h-[215px]" role="img" aria-labelledby="graphDesc">
-      <desc id="graphDesc">Interaktywny cykliczny graf stanów Agentic RAG: Router, Retrieval, Rerank, Grade, Rewrite, Generate, Hallucination Guard.</desc>
+    <!-- SVG: osiem węzłów, kształt niesie rolę (decyzja / maszyna / lokalne GPU / wyjście / koniec) -->
+    <svg viewBox="0 0 1400 180" class="w-full h-auto max-h-[192px]" role="img" aria-labelledby="graphDesc">
+      <desc id="graphDesc">Cykliczny graf stanów Agentic RAG: Router, Retrieve, Rerank na lokalnym GPU, Grade, Rewrite, Generate, Guard. Węzły decyzyjne mają kształt strzałki, węzeł rerankingu jest powiększony jako jedyny liczony lokalnie.</desc>
       <defs>
         <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
           <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
         </marker>
       </defs>
 
-      <!-- Krawędzie główne i pętle -->
-      <g class="edge" data-edge="e1"><path class="edge-base" d="M185 112 H212" marker-end="url(#ah)"/><path class="edge-flow" d="M185 112 H212"/></g>
-      <g class="edge" data-edge="e2"><path class="edge-base" d="M362 112 H389" marker-end="url(#ah)"/><path class="edge-flow" d="M362 112 H389"/></g>
-      <g class="edge" data-edge="e3"><path class="edge-base" d="M539 112 H566" marker-end="url(#ah)"/><path class="edge-flow" d="M539 112 H566"/></g>
-      
-      <!-- Pętla #1: grade_documents -> rewrite_query (górą) -->
-      <g class="edge is-loop" data-edge="e4"><path class="edge-base" d="M665 88 V38 H545" marker-end="url(#ah)"/><path class="edge-flow" d="M665 88 V38 H545"/></g>
-      
-      <!-- Pętla #1 powrót: rewrite_query -> retrieve (górą) -->
-      <g class="edge is-loop" data-edge="e5"><path class="edge-base" d="M395 38 H287 V80" marker-end="url(#ah)"/><path class="edge-flow" d="M395 38 H287 V80"/></g>
-      
-      <!-- grade_documents -> generate (przestrzeń 68px na czytelną etykietę 'trafne') -->
-      <g class="edge" data-edge="e6"><path class="edge-base" d="M716 112 H784" marker-end="url(#ah)"/><path class="edge-flow" d="M716 112 H784"/></g>
-      
-      <!-- Adaptive Router: router -> generate (ominięcie RAG dołem) -->
-      <g class="edge" data-edge="e7"><path class="edge-base" d="M110 136 V178 H820 V144" marker-end="url(#ah)"/><path class="edge-flow" d="M110 136 V178 H820 V144"/></g>
-      
-      <!-- generate -> hallucination_check -->
-      <g class="edge" data-edge="e8"><path class="edge-base" d="M940 112 H968" marker-end="url(#ah)"/><path class="edge-flow" d="M940 112 H968"/></g>
-      
-      <!-- hallucination_check -> __end -->
-      <g class="edge" data-edge="e9"><path class="edge-base" d="M1120 112 H1152" marker-end="url(#ah)"/><path class="edge-flow" d="M1120 112 H1152"/></g>
-      
-      <!-- Pętla #2: hallucination_check -> generate (regeneracja dołem z pełnym marginesem) -->
-      <g class="edge is-loop" data-edge="e10"><path class="edge-base" d="M1070 136 V168 H865 V144" marker-end="url(#ah)"/><path class="edge-flow" d="M1070 136 V168 H865 V144"/></g>
+      <!-- Krawędzie główne -->
+      <g class="edge" data-edge="e1"><path class="edge-base" pathLength="1" style="animation-delay:.10s" d="M170 100 H206" marker-end="url(#ah)"/><path class="edge-flow" d="M170 100 H206"/></g>
+      <g class="edge" data-edge="e2"><path class="edge-base" pathLength="1" style="animation-delay:.18s" d="M356 100 H392" marker-end="url(#ah)"/><path class="edge-flow" d="M356 100 H392"/></g>
+      <g class="edge" data-edge="e3"><path class="edge-base" pathLength="1" style="animation-delay:.26s" d="M588 100 H624" marker-end="url(#ah)"/><path class="edge-flow" d="M588 100 H624"/></g>
+      <g class="edge" data-edge="e6"><path class="edge-base" pathLength="1" style="animation-delay:.34s" d="M780 100 H856" marker-end="url(#ah)"/><path class="edge-flow" d="M780 100 H856"/></g>
+      <g class="edge" data-edge="e8"><path class="edge-base" pathLength="1" style="animation-delay:.42s" d="M1032 100 H1064" marker-end="url(#ah)"/><path class="edge-flow" d="M1032 100 H1064"/></g>
+      <g class="edge" data-edge="e9"><path class="edge-base" pathLength="1" style="animation-delay:.50s" d="M1220 100 H1252" marker-end="url(#ah)"/><path class="edge-flow" d="M1220 100 H1252"/></g>
 
-      <!-- Etykiety warunkowych przejść z marginesami -->
-      <text class="edge-label" data-lbl="e7"  x="420" y="171" text-anchor="middle" data-i18n="lblSkip">pomija RAG (pamięć dialogu)</text>
-      <text class="edge-label" data-lbl="e4"  x="605" y="30"  text-anchor="middle" data-i18n="lblRejected">odrzucone (szum)</text>
-      <text class="edge-label" data-lbl="e6"  x="750" y="104" text-anchor="middle" data-i18n="lblRelevant">trafne</text>
-      <text class="edge-label" data-lbl="e10" x="968" y="160" text-anchor="middle" data-i18n="lblHalluc">halucynacja (regeneracja)</text>
+      <!-- Pętla autokorekty: grade → rewrite → retrieve (górą) -->
+      <g class="edge is-loop" data-edge="e4"><path class="edge-base" pathLength="1" style="animation-delay:.58s" d="M702 76 V32 H590" marker-end="url(#ah)"/><path class="edge-flow" d="M702 76 V32 H590"/></g>
+      <g class="edge is-loop" data-edge="e5"><path class="edge-base" pathLength="1" style="animation-delay:.64s" d="M430 32 H281 V76" marker-end="url(#ah)"/><path class="edge-flow" d="M430 32 H281 V76"/></g>
 
-      <!-- Węzły grafu -->
-      <g class="gnode" data-node="router" data-state="idle">
-        <rect class="gnode-ring" x="35" y="88" width="150" height="48" rx="10"/>
-        <rect class="gnode-box"  x="35" y="88" width="150" height="48" rx="10"/>
-        <text class="gnode-title" x="110" y="107" text-anchor="middle">Router</text>
-        <text class="gnode-meta"  x="110" y="124" text-anchor="middle">—</text>
+      <!-- Adaptive Router: pominięcie RAG (dołem) -->
+      <g class="edge" data-edge="e7"><path class="edge-base" pathLength="1" style="animation-delay:.70s" d="M99 124 V160 H944 V132" marker-end="url(#ah)"/><path class="edge-flow" d="M99 124 V160 H944 V132"/></g>
+
+      <!-- Pętla regeneracji: guard → generate (dołem) -->
+      <g class="edge is-loop" data-edge="e10"><path class="edge-base" pathLength="1" style="animation-delay:.76s" d="M1142 124 V144 H990 V132" marker-end="url(#ah)"/><path class="edge-flow" d="M1142 124 V144 H990 V132"/></g>
+
+      <!-- Etykiety przejść warunkowych -->
+      <text class="edge-label" data-lbl="e7"  x="500"  y="173" text-anchor="middle" data-i18n="lblSkip">pomija RAG (pamięć dialogu)</text>
+      <text class="edge-label" data-lbl="e4"  x="650"  y="26"  text-anchor="middle" data-i18n="lblRejected">odrzucone (szum)</text>
+      <text class="edge-label" data-lbl="e6"  x="818"  y="92"  text-anchor="middle" data-i18n="lblRelevant">trafne</text>
+      <text class="edge-label" data-lbl="e10" x="1080" y="139" text-anchor="middle" data-i18n="lblHalluc">halucynacja (regeneracja)</text>
+
+      <!-- Węzeł decyzyjny: kształt wskazuje, że wybiera drogę -->
+      <g class="gnode" data-node="router" data-role="decision" data-state="idle" style="animation-delay:.06s">
+        <path class="gnode-box" d="M38 76 H156 L170 100 L156 124 H38 A10 10 0 0 1 28 114 V86 A10 10 0 0 1 38 76 Z"/>
+        <text class="gnode-title" x="95" y="95" text-anchor="middle">Router</text>
+        <text class="gnode-meta"  x="95" y="113" text-anchor="middle">—</text>
       </g>
-      <g class="gnode" data-node="retrieve" data-state="idle">
-        <rect class="gnode-ring" x="212" y="88" width="150" height="48" rx="10"/>
-        <rect class="gnode-box"  x="212" y="88" width="150" height="48" rx="10"/>
-        <text class="gnode-title" x="287" y="107" text-anchor="middle">Retrieve</text>
-        <text class="gnode-meta"  x="287" y="124" text-anchor="middle">—</text>
+
+      <g class="gnode" data-node="retrieve" data-role="machine" data-state="idle" style="animation-delay:.13s">
+        <rect class="gnode-box" x="206" y="76" width="150" height="48" rx="8"/>
+        <text class="gnode-title" x="281" y="95" text-anchor="middle">Retrieve</text>
+        <text class="gnode-meta"  x="281" y="113" text-anchor="middle">—</text>
       </g>
-      <g class="gnode" data-node="local_rerank" data-state="idle">
-        <rect class="gnode-ring" x="389" y="88" width="150" height="48" rx="10"/>
-        <rect class="gnode-box"  x="389" y="88" width="150" height="48" rx="10"/>
-        <text class="gnode-title" x="464" y="107" text-anchor="middle">Rerank (GPU)</text>
-        <text class="gnode-meta"  x="464" y="124" text-anchor="middle">—</text>
+
+      <!-- Jedyny węzeł liczony na własnym sprzęcie: większy, z eyebrow -->
+      <g class="gnode" data-node="local_rerank" data-role="local" data-state="idle" style="animation-delay:.20s">
+        <rect class="gnode-box" x="392" y="68" width="196" height="64" rx="8"/>
+        <text class="gnode-eyebrow" x="490" y="87"  text-anchor="middle">LOKALNIE · FP16</text>
+        <text class="gnode-title"   x="490" y="105" text-anchor="middle">Rerank · Cross-Encoder</text>
+        <text class="gnode-meta"    x="490" y="122" text-anchor="middle">—</text>
       </g>
-      <g class="gnode" data-node="grade_documents" data-state="idle">
-        <rect class="gnode-ring" x="566" y="88" width="150" height="48" rx="10"/>
-        <rect class="gnode-box"  x="566" y="88" width="150" height="48" rx="10"/>
-        <text class="gnode-title" x="641" y="107" text-anchor="middle">Grade (Async)</text>
-        <text class="gnode-meta"  x="641" y="124" text-anchor="middle">—</text>
+
+      <g class="gnode" data-node="grade_documents" data-role="machine" data-state="idle" style="animation-delay:.27s">
+        <rect class="gnode-box" x="624" y="76" width="156" height="48" rx="8"/>
+        <text class="gnode-title" x="702" y="95" text-anchor="middle">Grade (Async)</text>
+        <text class="gnode-meta"  x="702" y="113" text-anchor="middle">—</text>
       </g>
-      <g class="gnode" data-node="rewrite_query" data-state="idle">
-        <rect class="gnode-ring" x="395" y="14" width="150" height="48" rx="10"/>
-        <rect class="gnode-box"  x="395" y="14" width="150" height="48" rx="10"/>
-        <text class="gnode-title" x="470" y="33" text-anchor="middle">Rewrite Query</text>
-        <text class="gnode-meta"  x="470" y="50" text-anchor="middle">—</text>
+
+      <!-- Węzeł decyzyjny zawracający sterowanie: ostrze skierowane w lewo -->
+      <g class="gnode" data-node="rewrite_query" data-role="decision" data-state="idle" style="animation-delay:.34s">
+        <path class="gnode-box" d="M444 10 H580 A10 10 0 0 1 590 20 V44 A10 10 0 0 1 580 54 H444 L430 32 Z"/>
+        <text class="gnode-title" x="516" y="29" text-anchor="middle">Rewrite Query</text>
+        <text class="gnode-meta"  x="516" y="46" text-anchor="middle">—</text>
       </g>
-      <g class="gnode" data-node="generate" data-state="idle">
-        <rect class="gnode-ring" x="790" y="88" width="150" height="48" rx="10"/>
-        <rect class="gnode-box"  x="790" y="88" width="150" height="48" rx="10"/>
-        <text class="gnode-title" x="865" y="107" text-anchor="middle">Generate</text>
-        <text class="gnode-meta"  x="865" y="124" text-anchor="middle">—</text>
+
+      <g class="gnode" data-node="generate" data-role="output" data-state="idle" style="animation-delay:.41s">
+        <rect class="gnode-box" x="856" y="76" width="176" height="48" rx="8"/>
+        <text class="gnode-title" x="944" y="95" text-anchor="middle">Generate</text>
+        <text class="gnode-meta"  x="944" y="113" text-anchor="middle">—</text>
       </g>
-      <g class="gnode" data-node="hallucination_check" data-state="idle">
-        <rect class="gnode-ring" x="970" y="88" width="150" height="48" rx="10"/>
-        <rect class="gnode-box"  x="970" y="88" width="150" height="48" rx="10"/>
-        <text class="gnode-title" x="1045" y="107" text-anchor="middle">Guard</text>
-        <text class="gnode-meta"  x="1045" y="124" text-anchor="middle">—</text>
+
+      <g class="gnode" data-node="hallucination_check" data-role="machine" data-state="idle" style="animation-delay:.48s">
+        <rect class="gnode-box" x="1064" y="76" width="156" height="48" rx="8"/>
+        <text class="gnode-title" x="1142" y="95" text-anchor="middle">Guard</text>
+        <text class="gnode-meta"  x="1142" y="113" text-anchor="middle">—</text>
       </g>
-      <g class="gnode" data-node="__end" data-state="idle">
-        <rect class="gnode-box" x="1155" y="88" width="110" height="48" rx="10"/>
-        <text class="gnode-title" x="1210" y="116" text-anchor="middle" data-i18n="nodeEnd">Koniec</text>
+
+      <g class="gnode" data-node="__end" data-role="terminal" data-state="idle" style="animation-delay:.55s">
+        <rect class="gnode-box" x="1255" y="76" width="110" height="48" rx="24"/>
+        <text class="gnode-title" x="1310" y="105" text-anchor="middle" data-i18n="nodeEnd">Koniec</text>
       </g>
     </svg>
+
+    <!-- ── Taśma przebiegu: proporcjonalny rozkład czasu i kosztu ── -->
+    <div id="runTape" class="hidden pt-1.5">
+      <div class="flex items-center gap-3.5">
+        <div class="shrink-0 leading-none">
+          <div id="tapeTotal" class="font-display text-[22px] font-bold text-white leading-none">—</div>
+          <div class="font-mono text-[10px] text-fg3 uppercase tracking-wider mt-1" data-i18n="tapeTotalLabel">czas przebiegu</div>
+        </div>
+        <div id="tapeBar" class="flex-1 flex items-stretch gap-[2px] min-w-0"></div>
+      </div>
+      <div class="tape-legend flex items-center gap-4 mt-1.5 font-mono text-[10px] text-fg3">
+        <span class="flex items-center gap-1.5">
+          <span class="tape-swatch" style="background:rgba(108,140,255,.8)"></span>
+          <span data-i18n="tapeCloud">chmura — zapłacone tokeny</span>
+        </span>
+        <span class="flex items-center gap-1.5">
+          <span class="tape-swatch" style="background:repeating-linear-gradient(135deg,rgba(108,140,255,.55) 0 2px,transparent 2px 6px);box-shadow:inset 0 0 0 1px rgba(108,140,255,.55)"></span>
+          <span data-i18n="tapeLocal">lokalnie — RTX 2050, zero kosztu</span>
+        </span>
+        <span class="ml-auto hidden md:inline" data-i18n="tapeHint">najedź na segment, aby podświetlić krok</span>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -296,87 +398,85 @@
 <main class="lg:flex-1 lg:min-h-0 mx-auto w-full max-w-[1520px] px-5 py-3 grid gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
 
   <!-- Lewa Kolumna: Odpowiedź i Propozycje Pytań -->
-  <div class="rounded-xl border border-line bg-panel flex flex-col min-h-0 min-w-0 lg:h-full overflow-hidden">
+  <div class="rounded-xl panel-lift flex flex-col min-h-0 min-w-0 lg:h-full overflow-hidden">
     <div class="flex-1 min-h-0 overflow-y-auto px-5 py-4">
       
       <!-- Ekran Powitalny z Pełną Treścią Pytań Testowych -->
       <div id="emptyState" class="space-y-4">
         <div>
-          <h1 class="text-[16px] font-semibold tracking-tight text-white" data-i18n="emptyTitle">Wybierz scenariusz testowy lub zadaj własne pytanie na żywo</h1>
+          <h1 class="font-display text-[22px] font-bold tracking-tight text-white leading-tight" data-i18n="emptyTitle">Wybierz scenariusz testowy lub zadaj własne pytanie na żywo</h1>
+          <p class="text-[13px] text-fg2 leading-relaxed mt-1.5 max-w-[56ch]" data-i18n="emptyBody">Każde zapytanie przechodzi przez cykliczny graf stanów LangGraph, lokalny Cross-Encoder na GPU i audyt ugruntowania odpowiedzi w źródłach.</p>
         </div>
 
-        <!-- 4 Pełne Karty z Treścią Pytań (bez zbędnych opisów) -->
-        <div class="grid gap-2.5 sm:grid-cols-2 mt-2">
-          
-          <!-- Karta 1: Pętla Samonaprawcza (Bursztynowa) -->
-          <div class="test-card group p-3.5 rounded-lg border border-warn/30 bg-warn/[0.04] hover:bg-warn/[0.08] hover:border-warn/60 transition cursor-pointer flex flex-col justify-between"
-               data-query="Ile NVIDIA zarobiła na kartach do grania w Q3 FY2025?">
+        <!-- Cztery scenariusze. Akcent bursztynowy niesie jedno znaczenie: to jedyny przebieg z pętlą samonaprawczą. -->
+        <div class="grid gap-2.5 sm:grid-cols-2">
+
+          <div class="test-card group p-3 rounded-lg border border-warn/40 bg-warn/[0.05] hover:bg-warn/[0.09] hover:border-warn/70 transition cursor-pointer flex flex-col justify-between focus-visible:border-warn"
+               role="button" tabindex="0"
+               data-query="Ile NVIDIA zarobiła na kartach do grania w Q3 FY2025?" data-query-en="How much did NVIDIA make on gaming cards in Q3 FY2025?">
             <div>
               <div class="flex items-center gap-1.5 mb-2">
                 <span class="w-1.5 h-1.5 rounded-full bg-warn shrink-0"></span>
-                <span class="font-mono text-[10px] text-warn font-semibold uppercase tracking-wider">Wymusza Pętlę Autokorekty</span>
+                <span class="font-mono text-[10px] text-warn font-semibold uppercase tracking-wider" data-i18n="cardLoopTag">Wymusza pętlę autokorekty</span>
               </div>
-              <p class="text-[13.5px] font-medium text-white group-hover:text-warn transition leading-snug">
-                "Ile NVIDIA zarobiła na kartach do grania w Q3 FY2025?"
+              <p data-q class="text-[15px] font-medium text-white transition leading-snug">
+                Ile NVIDIA zarobiła na kartach do grania w Q3 FY2025?
               </p>
             </div>
-            <div class="mt-3 pt-2 border-t border-warn/20 flex items-center justify-between font-mono text-[10.5px] text-warn">
-              <span>Samonaprawa LangGraph</span>
-              <span class="font-bold group-hover:translate-x-1 transition">Uruchom ➜</span>
+            <div class="mt-3 pt-2 border-t border-warn/20 flex items-center justify-between font-mono text-[11.5px] text-warn">
+              <span data-i18n="cardLoopFoot">Samonaprawa LangGraph</span>
+              <span class="font-semibold group-hover:translate-x-1 transition" data-i18n="cardRun">Uruchom</span>
             </div>
           </div>
 
-          <!-- Karta 2: Precyzyjny RAG Big Tech (Zielona) -->
-          <div class="test-card group p-3.5 rounded-lg border border-ok/30 bg-ok/[0.03] hover:bg-ok/[0.07] hover:border-ok/60 transition cursor-pointer flex flex-col justify-between"
-               data-query="Jaki był zysk netto i marża brutto NVIDIA w Q3 FY2025 według oficjalnego raportu 10-Q?">
+          <div class="test-card group p-3 rounded-lg bg-raised/60 hover:bg-raised transition cursor-pointer flex flex-col justify-between"
+               role="button" tabindex="0"
+               data-query="Jaki był zysk netto i marża brutto NVIDIA w Q3 FY2025 według oficjalnego raportu 10-Q?" data-query-en="What were NVIDIA's net income and gross margin in Q3 FY2025 according to the official 10-Q filing?">
             <div>
               <div class="flex items-center gap-1.5 mb-2">
-                <span class="w-1.5 h-1.5 rounded-full bg-ok shrink-0"></span>
-                <span class="font-mono text-[10px] text-ok font-semibold uppercase tracking-wider">Precyzyjny RAG (10-Q)</span>
+                <span class="font-mono text-[10px] text-fg3 font-semibold uppercase tracking-wider" data-i18n="cardRagTag">Precyzyjny RAG · raport 10-Q</span>
               </div>
-              <p class="text-[13.5px] font-medium text-white group-hover:text-ok transition leading-snug">
-                "Jaki był zysk netto i marża brutto NVIDIA w Q3 FY2025 według oficjalnego raportu 10-Q?"
+              <p data-q class="text-[15px] font-medium text-white transition leading-snug">
+                Jaki był zysk netto i marża brutto NVIDIA w Q3 FY2025 według oficjalnego raportu 10-Q?
               </p>
             </div>
-            <div class="mt-3 pt-2 border-t border-ok/20 flex items-center justify-between font-mono text-[10.5px] text-ok">
-              <span>Parent-Document + GPU</span>
-              <span class="font-bold group-hover:translate-x-1 transition">Uruchom ➜</span>
+            <div class="mt-3 pt-2 border-t border-line flex items-center justify-between font-mono text-[11.5px] text-fg3">
+              <span data-i18n="cardRagFoot">Parent-Document + GPU</span>
+              <span class="font-semibold group-hover:translate-x-1 group-hover:text-fg transition" data-i18n="cardRun">Uruchom</span>
             </div>
           </div>
 
-          <!-- Karta 3: Pamięć Dialogu / Adaptive Router (Niebieska) -->
-          <div class="test-card group p-3.5 rounded-lg border border-live/30 bg-live/[0.03] hover:bg-live/[0.07] hover:border-live/60 transition cursor-pointer flex flex-col justify-between"
-               data-query="W czym możesz mi pomóc i jak działa ta platforma?">
+          <div class="test-card group p-3 rounded-lg bg-raised/60 hover:bg-raised transition cursor-pointer flex flex-col justify-between"
+               role="button" tabindex="0"
+               data-query="W czym możesz mi pomóc i jak działa ta platforma?" data-query-en="What can you help me with and how does this platform work?">
             <div>
               <div class="flex items-center gap-1.5 mb-2">
-                <span class="w-1.5 h-1.5 rounded-full bg-live shrink-0"></span>
-                <span class="font-mono text-[10px] text-live font-semibold uppercase tracking-wider">Adaptive Router (Pominięcie RAG)</span>
+                <span class="font-mono text-[10px] text-fg3 font-semibold uppercase tracking-wider" data-i18n="cardRouterTag">Adaptive Router · pomija RAG</span>
               </div>
-              <p class="text-[13.5px] font-medium text-white group-hover:text-live transition leading-snug">
-                "W czym możesz mi pomóc i jak działa ta platforma?"
+              <p data-q class="text-[15px] font-medium text-white transition leading-snug">
+                W czym możesz mi pomóc i jak działa ta platforma?
               </p>
             </div>
-            <div class="mt-3 pt-2 border-t border-live/20 flex items-center justify-between font-mono text-[10.5px] text-live">
-              <span>Pamięć wieloturowa</span>
-              <span class="font-bold group-hover:translate-x-1 transition">Uruchom ➜</span>
+            <div class="mt-3 pt-2 border-t border-line flex items-center justify-between font-mono text-[11.5px] text-fg3">
+              <span data-i18n="cardRouterFoot">Pamięć wieloturowa</span>
+              <span class="font-semibold group-hover:translate-x-1 group-hover:text-fg transition" data-i18n="cardRun">Uruchom</span>
             </div>
           </div>
 
-          <!-- Karta 4: Prawo i Regulacje AI (Fioletowa) -->
-          <div class="test-card group p-3.5 rounded-lg border border-line bg-raised/50 hover:bg-raised hover:border-line2 transition cursor-pointer flex flex-col justify-between"
-               data-query="Jakie praktyki sztucznej inteligencji są bezwzględnie zakazane przez Artykuł 5 EU AI Act?">
+          <div class="test-card group p-3 rounded-lg bg-raised/60 hover:bg-raised transition cursor-pointer flex flex-col justify-between"
+               role="button" tabindex="0"
+               data-query="Jakie praktyki sztucznej inteligencji są bezwzględnie zakazane przez Artykuł 5 EU AI Act?" data-query-en="Which AI practices are outright prohibited by Article 5 of the EU AI Act?">
             <div>
               <div class="flex items-center gap-1.5 mb-2">
-                <span class="w-2 h-2 rounded-full bg-purple-400 shrink-0"></span>
-                <span class="font-mono text-[10px] text-purple-400 font-semibold uppercase tracking-wider">Prawo i Compliance (EU AI Act)</span>
+                <span class="font-mono text-[10px] text-fg3 font-semibold uppercase tracking-wider" data-i18n="cardLegalTag">Prawo i compliance · EU AI Act</span>
               </div>
-              <p class="text-[13.5px] font-medium text-white group-hover:text-purple-300 transition leading-snug">
-                "Jakie praktyki sztucznej inteligencji są bezwzględnie zakazane przez Artykuł 5 EU AI Act?"
+              <p data-q class="text-[15px] font-medium text-white transition leading-snug">
+                Jakie praktyki sztucznej inteligencji są bezwzględnie zakazane przez Artykuł 5 EU AI Act?
               </p>
             </div>
-            <div class="mt-3 pt-2 border-t border-line flex items-center justify-between font-mono text-[10.5px] text-fg2">
-              <span>Audyt regulacji UE</span>
-              <span class="font-bold group-hover:translate-x-1 transition">Uruchom ➜</span>
+            <div class="mt-3 pt-2 border-t border-line flex items-center justify-between font-mono text-[11.5px] text-fg3">
+              <span data-i18n="cardLegalFoot">Audyt regulacji UE</span>
+              <span class="font-semibold group-hover:translate-x-1 group-hover:text-fg transition" data-i18n="cardRun">Uruchom</span>
             </div>
           </div>
 
@@ -386,8 +486,8 @@
       <!-- Widok Aktywnej Odpowiedzi (Widoczny po wysłaniu zapytania) -->
       <div id="answerBody" class="hidden space-y-4">
         <div>
-          <p class="text-[11.5px] font-mono text-fg3 uppercase tracking-wider mb-1" data-i18n="askedLabel">Zadane pytanie:</p>
-          <p id="askedText" class="text-[15px] font-medium text-white leading-snug"></p>
+          <p class="text-[10px] font-mono text-fg3 uppercase tracking-wider mb-1.5" data-i18n="askedLabel">Zadane pytanie:</p>
+          <p id="askedText" class="font-display text-[26px] sm:text-[32px] lg:text-[40px] font-bold text-white leading-[1.06] tracking-tight text-balance"></p>
         </div>
 
         <!-- Pasek Statusu Audytu i Weryfikacji (widoczny przed zatwierdzeniem odpowiedzi) -->
@@ -397,13 +497,13 @@
         </div>
 
         <!-- Treść Odpowiedzi (Ukryta do momentu pozytywnego audytu halucynacji) -->
-        <div id="answerText" class="hidden text-[14px] leading-[1.75] text-fg prose-answer"></div>
+        <div id="answerText" class="hidden text-[15px] leading-[1.75] text-fg prose-answer"></div>
 
         <!-- Zacytowane Źródła i Fragmenty z możliwością rozwijania treści -->
         <div id="citeWrap" class="hidden pt-3 border-t border-line space-y-2">
           <div class="flex items-center justify-between">
             <p class="text-[11.5px] font-mono text-fg3 uppercase tracking-wider" data-i18n="citeLabel">Zweryfikowane źródła ugruntowujące:</p>
-            <span class="font-mono text-[10px] text-fg3">kliknij źródło, aby rozwinąć treść</span>
+            <span class="font-mono text-[10px] text-fg3" data-i18n="citeHint">kliknij źródło, aby rozwinąć treść</span>
           </div>
           <div id="citeList" class="flex flex-wrap gap-1.5"></div>
           
@@ -411,7 +511,7 @@
           <div id="citeDetailBox" class="hidden p-3.5 rounded-lg border border-live/30 bg-live/[0.03] space-y-2 transition-all">
             <div class="flex items-center justify-between gap-2 pb-2 border-b border-line">
               <div class="flex items-center gap-2 min-w-0">
-                <span id="citeDetailBadge" class="font-mono text-[10.5px] font-bold text-live px-1.5 py-0.5 rounded bg-live/15 shrink-0">[1]</span>
+                <span id="citeDetailBadge" class="font-mono text-[11.5px] font-bold text-live px-1.5 py-0.5 rounded bg-live/15 shrink-0">[1]</span>
                 <button id="citeDetailTitleBtn" class="font-mono text-xs font-semibold text-white hover:text-live hover:underline transition flex items-center gap-1.5 cursor-pointer text-left truncate group" title="Kliknij tutaj, aby otworzyć pełną treść dokumentu">
                   <span id="citeDetailTitle" class="truncate"></span>
                   <i data-lucide="external-link" class="w-3 h-3 text-fg3 group-hover:text-live shrink-0"></i>
@@ -419,7 +519,7 @@
                 <span id="citeDetailMeta" class="font-mono text-[10px] text-fg3 shrink-0 hidden sm:inline"></span>
               </div>
               <div class="flex items-center gap-2 shrink-0">
-                <button id="citeViewFullBtn" class="px-2 py-0.5 rounded border border-line hover:border-line2 bg-panel text-[10.5px] font-mono text-fg2 hover:text-white transition flex items-center gap-1">
+                <button id="citeViewFullBtn" class="px-2 py-0.5 rounded border border-line hover:border-line2 bg-panel text-[11.5px] font-mono text-fg2 hover:text-white transition flex items-center gap-1">
                   <span>Cały plik</span>
                   <i data-lucide="maximize-2" class="w-3 h-3"></i>
                 </button>
@@ -428,7 +528,7 @@
                 </button>
               </div>
             </div>
-            <div id="citeDetailContent" class="text-[12.5px] leading-relaxed text-fg prose-answer max-h-[260px] overflow-y-auto pr-1 select-text"></div>
+            <div id="citeDetailContent" class="text-[13px] leading-relaxed text-fg prose-answer max-h-[260px] overflow-y-auto pr-1 select-text"></div>
           </div>
         </div>
 
@@ -440,69 +540,40 @@
   </div>
 
   <!-- Prawa Kolumna: Inspektor Telemetrii LLMOps i Oś Czasu -->
-  <div class="rounded-xl border border-line bg-panel flex flex-col min-h-0 min-w-0 lg:h-full overflow-hidden">
+  <div class="rounded-xl panel-lift flex flex-col min-h-0 min-w-0 lg:h-full overflow-hidden">
     <div class="flex items-center gap-2 px-4 h-10 border-b border-line shrink-0 bg-raised/30">
       <div class="flex items-center gap-2">
         <i data-lucide="activity" class="w-3.5 h-3.5 text-live" stroke-width="2"></i>
-        <h2 class="text-[12px] font-medium text-fg2 uppercase tracking-wider font-mono" data-i18n="inspector">Przebieg Telemetryczny</h2>
+        <h2 class="text-[13px] font-medium text-fg2 uppercase tracking-wider font-mono" data-i18n="inspector">Przebieg Telemetryczny</h2>
       </div>
       <span id="sessionId" class="ml-auto font-mono text-[10px] text-fg3 truncate max-w-[200px]"></span>
     </div>
     
     <!-- Oś Czasu Kroków (Scrollowalna) -->
     <div id="timeline" class="flex-1 min-h-0 overflow-y-auto p-3 flex flex-col gap-2.5">
-      <div class="p-4 rounded-lg border border-line bg-bg/50 text-center font-mono text-[11px] text-fg3">
-        Oczekuję na rozpoczęcie zapytania w trybie na żywo...
-      </div>
+      <div data-tl-idle class="p-4 rounded-lg panel-sunk text-center font-mono text-[11.5px] text-fg3" data-i18n="timelineIdle">Oczekuję na rozpoczęcie zapytania.</div>
     </div>
   </div>
 </main>
 
 
 <!-- ═════════════════════════════════════════════════════════════════════════
-     4. DOLNA BELKA WEJŚCIA (FOOTER INPUT & QUICK PILLS)
+     4. DOLNA BELKA WEJŚCIA (PASEK ZAPYTANIA)
 ══════════════════════════════════════════════════════════════════════════ -->
 <footer class="shrink-0 border-t border-line bg-bg">
-  <div class="mx-auto max-w-[1520px] px-5 py-2 grid gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] items-center">
-    
-    <!-- Lewa strona: Szybkie Pigułki Scenariuszy (pod oknem odpowiedzi) -->
-    <div class="flex items-center gap-1.5 overflow-x-auto text-[11px] min-w-0 py-0.5">
-      <span class="text-fg3 font-mono text-[10px] uppercase tracking-wider shrink-0 mr-0.5">Szybki wybór:</span>
-      <button class="quick-pill px-2 py-1 rounded-md border border-warn/40 bg-warn/[0.06] text-warn hover:bg-warn/15 transition shrink-0 flex items-center gap-1.5 whitespace-nowrap"
-              data-query="Ile NVIDIA zarobiła na kartach do grania w Q3 FY2025?">
-        <span class="w-1.5 h-1.5 rounded-full bg-warn"></span>
-        <span>Pętla: Karty do grania</span>
-      </button>
-      <button class="quick-pill px-2 py-1 rounded-md border border-ok/40 bg-ok/[0.06] text-ok hover:bg-ok/15 transition shrink-0 flex items-center gap-1.5 whitespace-nowrap"
-              data-query="Jaki był zysk netto i marża brutto NVIDIA w Q3 FY2025 według oficjalnego raportu 10-Q?">
-        <span class="w-1.5 h-1.5 rounded-full bg-ok"></span>
-        <span>RAG: Zysk netto 10-Q</span>
-      </button>
-      <button class="quick-pill px-2 py-1 rounded-md border border-live/40 bg-live/[0.06] text-live hover:bg-live/15 transition shrink-0 flex items-center gap-1.5 whitespace-nowrap"
-              data-query="W czym możesz mi pomóc i jak działa ta platforma?">
-        <span class="w-1.5 h-1.5 rounded-full bg-live"></span>
-        <span>Pamięć dialogu</span>
-      </button>
-      <button class="quick-pill px-2 py-1 rounded-md border border-line bg-raised hover:border-line2 text-fg2 transition shrink-0 flex items-center gap-1.5 whitespace-nowrap"
-              data-query="Jakie praktyki sztucznej inteligencji są bezwzględnie zakazane przez Artykuł 5 EU AI Act?">
-        <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
-        <span>Prawo: EU AI Act</span>
-      </button>
-    </div>
-
-    <!-- Prawa strona: Pasek Formularza Zapytania (pod kolumną Przebiegu Telemetrycznego) -->
+  <div class="mx-auto max-w-[1520px] px-5 py-2.5">
     <div class="flex items-center gap-2 min-w-0">
       <div class="relative flex-1 min-w-0">
         <input id="queryInput" type="text"
-               placeholder="Zadaj pytanie analityczne na żywo..."
-               class="w-full h-9 rounded-lg border border-line bg-panel px-3 text-[13px] text-white placeholder:text-fg3 focus:border-live focus:bg-raised outline-none transition font-sans">
+               placeholder="Zadaj pytanie analityczne na żywo..." data-i18n-ph="inputPh"
+               class="w-full h-10 rounded-lg bg-raised/70 px-3.5 text-[13px] text-white placeholder:text-fg3 focus:bg-raised outline-none transition font-sans"
+               style="box-shadow: inset 0 1px 0 rgba(255,255,255,.05);">
       </div>
-      <button id="sendBtn" class="shrink-0 h-9 px-4 rounded-lg bg-white hover:bg-neutral-200 text-black text-[12.5px] font-semibold flex items-center gap-1.5 disabled:opacity-40 transition">
-        <span>Wyślij</span>
+      <button id="sendBtn" class="shrink-0 h-10 px-4 rounded-lg bg-white hover:bg-neutral-200 text-black text-[13px] font-semibold flex items-center gap-1.5 disabled:opacity-40 transition">
+        <span data-i18n="send">Wyślij</span>
         <i data-lucide="arrow-up" class="w-3.5 h-3.5" stroke-width="2.5"></i>
       </button>
     </div>
-
   </div>
 </footer>
 
@@ -511,11 +582,11 @@
      5. MODAL: WGRYWANIE DOKUMENTÓW (INGESTION MODAL)
 ══════════════════════════════════════════════════════════════════════════ -->
 <div id="uploadModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-  <div class="bg-panel border border-line rounded-xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+  <div class="panel-lift rounded-xl max-w-lg w-full p-6 shadow-2xl space-y-4">
     <div class="flex items-center justify-between pb-3 border-b border-line">
       <div class="flex items-center gap-2">
         <i data-lucide="upload-cloud" class="w-4 h-4 text-live" stroke-width="2"></i>
-        <h3 class="text-[13.5px] font-semibold text-white">Wgraj Własny Dokument</h3>
+        <h3 class="text-[15px] font-semibold text-white">Wgraj Własny Dokument</h3>
       </div>
       <button id="closeUploadModalBtn" class="text-fg3 hover:text-fg transition">
         <i data-lucide="x" class="w-4 h-4"></i>
@@ -542,7 +613,7 @@
       </div>
 
       <!-- Komunikat statusu -->
-      <div id="uploadStatusMsg" class="hidden text-[12px] p-2.5 rounded-lg border"></div>
+      <div id="uploadStatusMsg" class="hidden text-[13px] p-2.5 rounded-lg border"></div>
 
       <button type="submit" id="submitUploadBtn" class="w-full h-10 rounded-lg bg-live hover:bg-live/90 text-white text-xs font-semibold flex items-center justify-center gap-2 transition">
         <span>Rozpocznij Ingestię & OCR</span>
@@ -556,13 +627,13 @@
      6. MODAL: EKSPLORATOR BAZY WIEDZY (KNOWLEDGE LAKE EXPLORER)
 ══════════════════════════════════════════════════════════════════════════ -->
 <div id="docsModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-  <div class="bg-panel border border-line rounded-xl max-w-3xl w-full p-6 shadow-2xl flex flex-col max-h-[85vh] space-y-4">
+  <div class="panel-lift rounded-xl max-w-3xl w-full p-6 shadow-2xl flex flex-col max-h-[85vh] space-y-4">
     <div class="flex items-center justify-between pb-3 border-b border-line shrink-0">
       <div class="flex items-center gap-2">
         <i data-lucide="database" class="w-4 h-4 text-ok" stroke-width="2"></i>
         <div>
-          <h3 class="text-[13.5px] font-semibold text-white">Eksplorator Markdown Knowledge Lake</h3>
-          <p class="text-[11px] text-fg3 font-mono">Zindeksowane ustrukturyzowane zasoby w bazy wektorowej</p>
+          <h3 class="text-[15px] font-semibold text-white">Eksplorator Markdown Knowledge Lake</h3>
+          <p class="text-[11.5px] text-fg3 font-mono">Zindeksowane ustrukturyzowane zasoby w bazy wektorowej</p>
         </div>
       </div>
       <button id="closeDocsModalBtn" class="text-fg3 hover:text-fg transition">
@@ -582,13 +653,13 @@
      6.5. MODAL: PODGLĄD PEŁNEGO DOKUMENTU ŹRÓDŁOWEGO (DOCUMENT PREVIEW MODAL)
 ══════════════════════════════════════════════════════════════════════════ -->
 <div id="docPreviewModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-  <div class="bg-panel border border-line rounded-xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+  <div class="panel-lift rounded-xl max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
     <div class="flex items-center justify-between p-4 border-b border-line shrink-0 bg-raised/40">
       <div class="flex items-center gap-2.5 min-w-0">
         <i data-lucide="file-text" class="w-4 h-4 text-live shrink-0"></i>
         <div class="min-w-0">
-          <h3 id="docPreviewTitle" class="text-[13.5px] font-semibold text-white truncate font-sans"></h3>
-          <p id="docPreviewMeta" class="text-[10.5px] font-mono text-fg3 truncate"></p>
+          <h3 id="docPreviewTitle" class="text-[15px] font-semibold text-white truncate font-sans"></h3>
+          <p id="docPreviewMeta" class="text-[11.5px] font-mono text-fg3 truncate"></p>
         </div>
       </div>
       <button id="closeDocPreviewBtn" class="text-fg3 hover:text-fg transition p-1 shrink-0">
@@ -597,7 +668,7 @@
     </div>
     <div id="docPreviewContent" class="flex-1 overflow-y-auto p-5 text-[13px] leading-relaxed text-fg prose-answer bg-bg/40 select-text"></div>
     <div class="p-3 border-t border-line shrink-0 flex items-center justify-between bg-raised/20">
-      <span class="font-mono text-[10.5px] text-fg3">Knowledge Lake · Pełny dokument źródłowy Markdown</span>
+      <span class="font-mono text-[11.5px] text-fg3">Knowledge Lake · Pełny dokument źródłowy Markdown</span>
       <button id="docPreviewAskBtn" class="px-3 py-1 rounded bg-white hover:bg-neutral-200 text-black font-semibold text-xs transition">
         Zapytaj o ten dokument ➜
       </button>
@@ -627,10 +698,11 @@ const I18N = {
     lblRelevant: 'trafne',
     lblHalluc: 'halucynacja (regeneracja)',
     emptyTitle: 'Wybierz scenariusz testowy lub zadaj własne pytanie na żywo',
-    emptyBody: 'Każde zapytanie jest przetwarzane w 100% na żywo przez cykliczny graf stanów LangGraph, lokalny Cross-Encoder PyTorch na GPU NVIDIA RTX 2050 oraz Google Gemini.',
+    emptyBody: 'Każde zapytanie przechodzi przez cykliczny graf LangGraph, lokalny reranking na GPU i audyt ugruntowania w źródłach.',
     askedLabel: 'Zadane pytanie:',
     citeLabel: 'Zweryfikowane źródła ugruntowujące:',
     send: 'Wyślij',
+    inputPh: 'Zadaj pytanie analityczne na żywo...',
     inspector: 'Przebieg Telemetryczny na Żywo',
     nRouter: 'Router',
     nRetrieve: 'Pobieranie (Parent Chunks)',
@@ -649,7 +721,41 @@ const I18N = {
     irrelevant: 'nietrafny',
     grounded: 'Ugruntowana w źródłach',
     useful: 'Odpowiada na pytanie',
-    table: 'tabela'
+    table: 'tabela',
+    send: 'Wyślij',
+    ambient: 'podgląd demo',
+    tapeTotalLabel: 'czas przebiegu',
+    tapeCloud: 'chmura — zapłacone tokeny',
+    tapeLocal: 'lokalnie — RTX 2050, zero kosztu',
+    tapeHint: 'najedź na segment, aby podświetlić krok',
+    cardLoopTag: 'Wymusza pętlę autokorekty',
+    cardLoopFoot: 'Samonaprawa LangGraph',
+    cardRagTag: 'Precyzyjny RAG · raport 10-Q',
+    cardRagFoot: 'Parent-Document + GPU',
+    cardRouterTag: 'Adaptive Router · pomija RAG',
+    cardRouterFoot: 'Pamięć wieloturowa',
+    cardLegalTag: 'Prawo i compliance · EU AI Act',
+    cardLegalFoot: 'Audyt regulacji UE',
+    cardRun: 'Uruchom',
+    timelineIdle: 'Oczekuję na rozpoczęcie zapytania.',
+    auRouter: 'Analiza intencji zapytania przez Adaptive Router...',
+    auRetrieve: 'Wyszukiwanie fragmentów w Knowledge Lake (Parent-Document Retrieval)...',
+    auRerank: 'Reranking Cross-Encoderem na lokalnym GPU (FP16)...',
+    auGrade: 'Ocena merytoryczna źródeł (LLM Grader)...',
+    auRewrite: 'Autokorekta zapytania (pętla samonaprawcza)...',
+    auGenerating: 'Synteza odpowiedzi w toku. Treść buforowana do czasu audytu ugruntowania.',
+    auAuditing: 'Audyt halucynacji: weryfikacja ugruntowania odpowiedzi w faktach źródłowych...',
+    auFailed: 'Wykryto brak ugruntowania. Robocza odpowiedź odrzucona, trwa regeneracja.',
+    auPassed: 'Audyt zaliczony: odpowiedź ugruntowana w zweryfikowanych źródłach.',
+    auDirect: 'Odpowiedź bezpośrednia z pamięci dialogu, z pominięciem bazy RAG.',
+    auUngrounded: 'Wyczerpano limit regeneracji. Odpowiedź nie przeszła audytu ugruntowania — traktuj ją jako niezweryfikowaną.',
+    rerankHead: 'Inferencja Cross-Encoder na lokalnym GPU (FP16)',
+    rerankPassed: 'przekazane do sędziego',
+    gradeHead: 'Asynchroniczny audyt relewantności przez LLM:',
+    gradeNone: 'Żaden fragment nie spełnił kryteriów jakości. Agent kieruje zapytanie do pętli autokorekty.',
+    rewriteFailed: 'Odrzucone zapytanie:',
+    rewriteNew: 'Zoptymalizowane zapytanie:',
+    citeHint: 'kliknij źródło, aby rozwinąć treść'
   },
   en: {
     tagline: 'LangGraph · parent-document retrieval · local CUDA reranker',
@@ -666,10 +772,11 @@ const I18N = {
     lblRelevant: 'relevant',
     lblHalluc: 'hallucination (regenerate)',
     emptyTitle: 'Choose a test scenario or ask your own question live',
-    emptyBody: 'Every query runs 100% live through LangGraph state cycles, local PyTorch Cross-Encoder on RTX 2050 CUDA, and Google Gemini.',
+    emptyBody: 'Every query runs through the LangGraph state cycle, local GPU reranking and a grounding audit against sources.',
     askedLabel: 'Question asked:',
     citeLabel: 'Verified ground truth sources:',
     send: 'Send',
+    inputPh: 'Ask an analytical question live...',
     inspector: 'Live LLMOps Telemetry',
     nRouter: 'Router',
     nRetrieve: 'Retrieval (Parent Chunks)',
@@ -688,18 +795,69 @@ const I18N = {
     irrelevant: 'irrelevant',
     grounded: 'Grounded in sources',
     useful: 'Answers user question',
-    table: 'table'
+    table: 'table',
+    send: 'Send',
+    ambient: 'demo preview',
+    tapeTotalLabel: 'run duration',
+    tapeCloud: 'cloud — billed tokens',
+    tapeLocal: 'local — RTX 2050, zero cost',
+    tapeHint: 'hover a segment to highlight its step',
+    cardLoopTag: 'Forces the self-correction loop',
+    cardLoopFoot: 'LangGraph self-repair',
+    cardRagTag: 'Precise RAG · 10-Q filing',
+    cardRagFoot: 'Parent-Document + GPU',
+    cardRouterTag: 'Adaptive Router · skips RAG',
+    cardRouterFoot: 'Multi-turn memory',
+    cardLegalTag: 'Law and compliance · EU AI Act',
+    cardLegalFoot: 'EU regulation audit',
+    cardRun: 'Run',
+    timelineIdle: 'Waiting for a query to start.',
+    auRouter: 'Adaptive Router is classifying the query intent...',
+    auRetrieve: 'Searching the Knowledge Lake (parent-document retrieval)...',
+    auRerank: 'Cross-encoder reranking on the local GPU (FP16)...',
+    auGrade: 'Grading source relevance (LLM grader)...',
+    auRewrite: 'Rewriting the query (self-correction loop)...',
+    auGenerating: 'Synthesising the answer. Text is buffered until the grounding audit completes.',
+    auAuditing: 'Hallucination audit: verifying the answer against source facts...',
+    auFailed: 'Not grounded. Draft answer rejected, regenerating.',
+    auPassed: 'Audit passed: the answer is grounded in verified sources.',
+    auDirect: 'Direct answer from dialog memory, RAG skipped.',
+    auUngrounded: 'Regeneration limit reached. This answer did not pass the grounding audit — treat it as unverified.',
+    rerankHead: 'Cross-encoder inference on the local GPU (FP16)',
+    rerankPassed: 'passed to the grader',
+    gradeHead: 'Asynchronous relevance audit by the LLM:',
+    gradeNone: 'No passage met the quality bar. The agent routes the query into the self-correction loop.',
+    rewriteFailed: 'Rejected query:',
+    rewriteNew: 'Optimised query:',
+    citeHint: 'click a source to expand its text'
   }
 };
 
 let LANG = 'pl';
 const t = k => (I18N[LANG][k] ?? k);
+// Zapytanie karty w aktywnym języku; backend dostaje `lang`, więc pytanie musi się z nim zgadzać.
+const cardQuery = card => (LANG === 'en' && card.dataset.queryEn) ? card.dataset.queryEn : card.dataset.query;
 
 function applyLang() {
   document.documentElement.lang = LANG;
   document.querySelectorAll('[data-i18n]').forEach(el => {
     el.textContent = t(el.dataset.i18n);
   });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+    el.placeholder = t(el.dataset.i18nPh);
+  });
+  // Karty scenariuszy niosą pytanie w obu językach — interfejs i treść muszą iść razem.
+  document.querySelectorAll('.test-card').forEach(card => {
+    const q = cardQuery(card);
+    const p = card.querySelector('[data-q]');
+    if (p) p.textContent = q;
+  });
+
+  // Pasek audytu nie ma statycznego klucza w markupie — trzyma go w data-audit-key.
+  const auditMsg = $('#auditMsg');
+  if (auditMsg && auditMsg.dataset.auditKey) {
+    auditMsg.textContent = t(auditMsg.dataset.auditKey);
+  }
   document.querySelectorAll('.langbtn').forEach(b => {
     const on = b.dataset.lang === LANG;
     b.classList.toggle('bg-raised', on);
@@ -766,16 +924,20 @@ function resetAll() {
   document.querySelectorAll('.edge-label').forEach(l => l.classList.remove('is-hot'));
 
   $('#timeline').innerHTML = `
-    <div class="p-4 rounded-lg border border-line bg-bg/50 text-center font-mono text-[11px] text-fg3">
-      Oczekuję na rozpoczęcie zapytania w trybie na żywo...
-    </div>`;
+    <div data-tl-idle class="p-4 rounded-lg panel-sunk text-center font-mono text-[11.5px] text-fg3" data-i18n="timelineIdle">${t('timelineIdle')}</div>`;
+
+  const tape = $('#runTape');
+  if (tape) tape.classList.add('hidden');
+  runSegments = [];
+  currentAuditKey = null;
+  const strip = $('#graphStrip');
+  if (strip) strip.classList.remove('is-running');
   $('#emptyState').classList.remove('hidden');
   $('#answerBody').classList.add('hidden');
   const banner = $('#auditStatusBanner');
   if (banner) banner.classList.add('hidden');
   $('#answerText').innerHTML = '';
   $('#answerText').classList.add('hidden');
-  $('#answerText').classList.remove('caret');
   $('#citeWrap').classList.add('hidden');
   $('#citeList').innerHTML = '';
   const detailBox = $('#citeDetailBox');
@@ -816,7 +978,7 @@ function flowEdge(id, on) {
 function tlSection(node) {
   const tl = $('#timeline');
   // Usuń placeholder początkowy jeśli istnieje
-  if (tl.children.length === 1 && tl.children[0].textContent.includes('Oczekuję na rozpoczęcie')) {
+  if (tl.children.length === 1 && tl.children[0].hasAttribute('data-tl-idle')) {
     tl.innerHTML = '';
   }
   const sec = el('section', 'tl-section rounded-lg border border-line bg-bg overflow-hidden shrink-0');
@@ -824,7 +986,7 @@ function tlSection(node) {
   sec.innerHTML = `
     <div class="flex items-center gap-2 px-3 h-8 border-b border-line bg-raised/40">
       <span class="w-1.5 h-1.5 rounded-full bg-live shrink-0 animate-ping" data-dot></span>
-      <span class="text-[12px] font-medium text-white">${t(NODE_LABEL[node] || node)}</span>
+      <span class="text-[13px] font-medium text-white">${t(NODE_LABEL[node] || node)}</span>
       <span class="ml-auto font-mono text-[10px] text-live" data-timer>${t('running')}…</span>
     </div>
     <div class="p-3 space-y-2" data-body></div>`;
@@ -855,10 +1017,10 @@ function rowChunk(c, i) {
   r.title = `Kliknij, aby otworzyć pełny podgląd dokumentu: ${c.filename}`;
   const isTable = c.is_table || false;
   r.innerHTML = `
-    <span class="font-mono text-[9.5px] text-fg3 w-4 shrink-0" data-idx>${i + 1}</span>
-    <span class="font-mono text-[10.5px] text-fg2 shrink-0 max-w-[40%] truncate" title="${c.filename}">${c.filename}</span>
-    ${isTable ? `<span class="shrink-0 px-1 rounded bg-live/15 font-mono text-[9px] text-live">${t('table')}</span>` : ''}
-    <span class="text-[10.5px] text-fg3 truncate flex-1 min-w-0" title="${c.preview || ''}">${c.preview || ''}</span>
+    <span class="font-mono text-[10px] text-fg3 w-4 shrink-0" data-idx>${i + 1}</span>
+    <span class="font-mono text-[11.5px] text-fg2 shrink-0 max-w-[40%] truncate" title="${c.filename}">${c.filename}</span>
+    ${isTable ? `<span class="shrink-0 px-1 rounded bg-live/15 font-mono text-[10px] text-live">${t('table')}</span>` : ''}
+    <span class="text-[11.5px] text-fg3 truncate flex-1 min-w-0" title="${c.preview || ''}">${c.preview || ''}</span>
     <span class="w-12 h-[4px] rounded bg-raised overflow-hidden shrink-0"><span class="score-bar block h-full bg-live" style="width:0"></span></span>
     <span class="font-mono text-[10px] text-fg3 w-9 text-right shrink-0" data-score></span>`;
 
@@ -882,7 +1044,7 @@ function layoutList(list, order) {
 function renderRetrieve(body, payload) {
   const candidates = payload.candidates || [];
   currentRetrievedPool = candidates;
-  body.innerHTML = `<p class="font-mono text-[10.5px] text-fg3 mb-1.5">${candidates.length} ${t('candidates')}</p>`;
+  body.innerHTML = `<p class="font-mono text-[11.5px] text-fg3 mb-1.5">${candidates.length} ${t('candidates')}</p>`;
   const list = el('div', 'rank-list');
   body.append(list);
   candidates.forEach((c, i) => list.append(rowChunk(c, i)));
@@ -891,8 +1053,8 @@ function renderRetrieve(body, payload) {
 
 async function renderRerank(body, payload, sec) {
   body.innerHTML = `
-    <div class="flex items-center justify-between text-[11px] text-fg2 mb-1.5 font-mono">
-      <span>Inferencja Cross-Encoder na GPU RTX 2050 (FP16)</span>
+    <div class="flex items-center justify-between text-[11.5px] text-fg2 mb-1.5 font-mono">
+      <span>${t('rerankHead')}</span>
       <span class="text-live font-semibold">${payload.vram_mb ? payload.vram_mb + ' MB VRAM' : ''}</span>
     </div>`;
   const list = el('div', 'rank-list');
@@ -928,31 +1090,31 @@ async function renderRerank(body, payload, sec) {
 
   const keptCount = ranked.filter(c => c.kept).length;
   const cutCount = ranked.length - keptCount;
-  body.append(el('p', 'mt-2 font-mono text-[10.5px] text-fg3', `${keptCount} ${t('kept')} (przekazane do sędziego) · ${cutCount} ${t('cut')}`));
+  body.append(el('p', 'mt-2 font-mono text-[11.5px] text-fg3', `${keptCount} ${t('kept')} (${t('rerankPassed')}) · ${cutCount} ${t('cut')}`));
 }
 
 function renderGrade(body, payload) {
   const verdicts = payload.graded_verdicts || [];
-  body.innerHTML = `<p class="text-[11px] text-fg2 mb-2 leading-snug">Asynchroniczny audyt relewantności przez LLM:</p>`;
+  body.innerHTML = `<p class="text-[11.5px] text-fg2 mb-2 leading-snug">${t('gradeHead')}</p>`;
   verdicts.forEach(v => {
     const row = el('div', 'chunk-row rounded-md border border-line bg-panel p-2.5 mb-1.5');
     row.dataset.chunk = v.chunk_id;
     const isOk = v.verdict === 'relevant';
     row.innerHTML = `
       <div class="flex items-center gap-2 mb-1">
-        <span class="px-1.5 py-0.5 rounded font-mono text-[9.5px] font-semibold ${isOk ? 'bg-ok/20 text-ok border border-ok/30' : 'bg-warn/20 text-warn border border-warn/30'}">
+        <span class="px-1.5 py-0.5 rounded font-mono text-[10px] font-semibold ${isOk ? 'bg-ok/20 text-ok border border-ok/30' : 'bg-warn/20 text-warn border border-warn/30'}">
           ${isOk ? '✓ ' + t('relevant') : '✕ ' + t('irrelevant')}
         </span>
         <span class="font-mono text-[10px] text-fg2 font-medium truncate">${v.filename}</span>
-        ${v.chunk_id ? `<span class="font-mono text-[9px] text-fg3 ml-auto">${v.chunk_id}</span>` : ''}
+        ${v.chunk_id ? `<span class="font-mono text-[10px] text-fg3 ml-auto">${v.chunk_id}</span>` : ''}
       </div>
-      <p class="text-[11px] text-fg2 leading-relaxed">${v.explanation || ''}</p>`;
+      <p class="text-[11.5px] text-fg2 leading-relaxed">${v.explanation || ''}</p>`;
     body.append(row);
   });
 
   if (payload.web_search_needed) {
     body.append(el('p', 'mt-2 text-[11.5px] text-warn leading-snug font-mono p-2 rounded bg-warn/10 border border-warn/30',
-      '⚠ Żaden fragment nie spełnił kryteriów jakości. Agent kieruje zapytanie do pętli autokorekty (Rewrite).'));
+      '⚠ ' + t('gradeNone')));
   }
 }
 
@@ -961,12 +1123,12 @@ function renderRewrite(body, payload) {
   body.innerHTML = `
     <div class="space-y-1.5">
       <div class="rounded-md border border-line bg-panel p-2">
-        <p class="font-mono text-[9.5px] text-fg3 uppercase tracking-wider mb-0.5">Odrzucone / nieudane zapytanie:</p>
-        <p class="text-[12px] text-fg3 line-through decoration-warn/60">${info.failed_query || ''}</p>
+        <p class="font-mono text-[10px] text-fg3 uppercase tracking-wider mb-0.5">${t('rewriteFailed')}</p>
+        <p class="text-[13px] text-fg3 line-through decoration-warn/60">${info.failed_query || ''}</p>
       </div>
       <div class="rounded-md border border-warn/50 bg-warn/[0.08] p-2">
-        <p class="font-mono text-[9.5px] text-warn uppercase tracking-wider mb-0.5">Zoptymalizowane zapytanie słów kluczowych:</p>
-        <p class="text-[12px] text-white font-medium">${payload.new_question || info.new_query || ''}</p>
+        <p class="font-mono text-[10px] text-warn uppercase tracking-wider mb-0.5">${t('rewriteNew')}</p>
+        <p class="text-[13px] text-white font-medium">${payload.new_question || info.new_query || ''}</p>
       </div>
     </div>`;
 }
@@ -983,11 +1145,12 @@ function renderCites(citations) {
 
   citations.forEach((c, i) => {
     const chunkId = c.chunk_id || '';
-    const chip = el('button', 'cite rounded-md border border-line bg-panel px-2.5 py-1 text-left flex items-center gap-1.5 hover:border-live/60 transition group cursor-pointer');
+    const chip = el('button', 'cite chip-in rounded-md border border-line bg-panel px-2.5 py-1 text-left flex items-center gap-1.5 hover:border-live/60 transition group cursor-pointer');
+    chip.style.animationDelay = (i * 45) + 'ms';
     chip.innerHTML = `
       <span class="font-mono text-[10px] text-live font-bold">[${i + 1}]</span>
-      <span class="font-mono text-[10.5px] text-fg2 group-hover:text-white transition truncate max-w-[200px]">${c.filename}</span>
-      ${c.is_table ? `<span class="px-1 rounded bg-live/15 text-live text-[9px] font-mono">${t('table')}</span>` : ''}
+      <span class="font-mono text-[11.5px] text-fg2 group-hover:text-white transition truncate max-w-[200px]">${c.filename}</span>
+      ${c.is_table ? `<span class="px-1 rounded bg-live/15 text-live text-[10px] font-mono">${t('table')}</span>` : ''}
       <i data-lucide="chevron-down" class="w-3 h-3 text-fg3 group-hover:text-live transition"></i>
     `;
     const hl = on => {
@@ -1141,7 +1304,7 @@ function renderVerdicts(payload) {
     [useful, t('useful')]
   ].forEach(([ok, label]) => {
     w.append(el('span',
-      `inline-flex items-center gap-1.5 px-2.5 h-6 rounded-md border font-mono text-[10.5px] ${ok ? 'border-ok/40 bg-ok/10 text-ok' : 'border-bad/40 bg-bad/10 text-bad'}`,
+      `inline-flex items-center gap-1.5 px-2.5 h-6 rounded-md border font-mono text-[11.5px] ${ok ? 'border-ok/40 bg-ok/10 text-ok' : 'border-bad/40 bg-bad/10 text-bad'}`,
       `${ok ? '✓' : '✕'} ${label}`
     ));
   });
@@ -1150,55 +1313,44 @@ function renderVerdicts(payload) {
 
 
 /* ═══ Funkcje Statusu Audytu i Ujawniania Odpowiedzi ═══ */
+const AUDIT_STATES = {
+  router:           { key: 'auRouter',     tone: 'work', pulse: 'animate-ping' },
+  retrieve:         { key: 'auRetrieve',   tone: 'work', pulse: 'animate-ping' },
+  local_rerank:     { key: 'auRerank',     tone: 'work', pulse: 'animate-ping' },
+  grade_documents:  { key: 'auGrade',      tone: 'work', pulse: 'animate-ping' },
+  rewrite_query:    { key: 'auRewrite',    tone: 'warn', pulse: 'animate-ping' },
+  generating:       { key: 'auGenerating', tone: 'live', pulse: 'animate-pulse' },
+  auditing:         { key: 'auAuditing',   tone: 'warn', pulse: 'animate-ping' },
+  failed_grounding: { key: 'auFailed',     tone: 'bad',  pulse: '' },
+  passed:           { key: 'auPassed',     tone: 'ok',   pulse: '' },
+  direct:           { key: 'auDirect',     tone: 'ok',   pulse: '' },
+  ungrounded:       { key: 'auUngrounded', tone: 'bad',  pulse: '' }
+};
+
+const AUDIT_TONES = {
+  work: { box: 'bg-raised/60 text-fg2',                     dot: 'bg-live' },
+  live: { box: 'bg-live/[0.06] text-live',                  dot: 'bg-live' },
+  warn: { box: 'bg-warn/[0.07] text-warn',                  dot: 'bg-warn' },
+  bad:  { box: 'bg-bad/[0.07] text-bad',                    dot: 'bg-bad'  },
+  ok:   { box: 'bg-ok/[0.07] text-ok',                      dot: 'bg-ok'   }
+};
+
+let currentAuditKey = null;
+
 function setAuditStatus(key) {
   const banner = $('#auditStatusBanner');
   const dot = $('#auditDot');
   const msg = $('#auditMsg');
-  if (!banner || !dot || !msg) return;
+  const state = AUDIT_STATES[key];
+  if (!banner || !dot || !msg || !state) return;
 
+  currentAuditKey = key;
+  const tone = AUDIT_TONES[state.tone];
   banner.classList.remove('hidden');
-
-  if (key === 'router') {
-    dot.className = 'w-2 h-2 rounded-full bg-live animate-ping shrink-0';
-    msg.textContent = 'Analiza intencji zapytania przez Adaptive Router...';
-    banner.className = 'p-3 rounded-lg border border-line bg-raised/50 flex items-center gap-2.5 text-xs font-mono text-fg2';
-  } else if (key === 'retrieve') {
-    dot.className = 'w-2 h-2 rounded-full bg-live animate-ping shrink-0';
-    msg.textContent = 'Wyszukiwanie fragmentów w Knowledge Lake (Parent-Document Retrieval)...';
-    banner.className = 'p-3 rounded-lg border border-line bg-raised/50 flex items-center gap-2.5 text-xs font-mono text-fg2';
-  } else if (key === 'local_rerank') {
-    dot.className = 'w-2 h-2 rounded-full bg-live animate-ping shrink-0';
-    msg.textContent = 'Reranking Cross-Encoderem na GPU NVIDIA RTX 2050 (FP16)...';
-    banner.className = 'p-3 rounded-lg border border-line bg-raised/50 flex items-center gap-2.5 text-xs font-mono text-fg2';
-  } else if (key === 'grade_documents') {
-    dot.className = 'w-2 h-2 rounded-full bg-live animate-ping shrink-0';
-    msg.textContent = 'Ocena merytoryczna źródeł (LLM Grader)...';
-    banner.className = 'p-3 rounded-lg border border-line bg-raised/50 flex items-center gap-2.5 text-xs font-mono text-fg2';
-  } else if (key === 'rewrite_query') {
-    dot.className = 'w-2 h-2 rounded-full bg-warn animate-ping shrink-0';
-    msg.textContent = 'Autokorekta zapytania (Loop Samonaprawczy #1)...';
-    banner.className = 'p-3 rounded-lg border border-warn/30 bg-warn/[0.05] flex items-center gap-2.5 text-xs font-mono text-warn';
-  } else if (key === 'generating') {
-    dot.className = 'w-2 h-2 rounded-full bg-live animate-pulse shrink-0';
-    msg.textContent = 'Synteza odpowiedzi w toku... Treść buforowana do momentu przejścia audytu ugruntowania.';
-    banner.className = 'p-3 rounded-lg border border-live/30 bg-live/[0.04] flex items-center gap-2.5 text-xs font-mono text-live';
-  } else if (key === 'auditing') {
-    dot.className = 'w-2 h-2 rounded-full bg-warn animate-ping shrink-0';
-    msg.textContent = 'Audyt halucynacji w toku: weryfikacja ugruntowania odpowiedzi w faktach źródłowych...';
-    banner.className = 'p-3 rounded-lg border border-warn/30 bg-warn/[0.05] flex items-center gap-2.5 text-xs font-mono text-warn';
-  } else if (key === 'failed_grounding') {
-    dot.className = 'w-2 h-2 rounded-full bg-bad shrink-0';
-    msg.textContent = '⚠ Wykryto brak ugruntowania (halucynację). Robocza odpowiedź odrzucona, trwa regeneracja...';
-    banner.className = 'p-3 rounded-lg border border-bad/30 bg-bad/[0.05] flex items-center gap-2.5 text-xs font-mono text-bad';
-  } else if (key === 'passed') {
-    dot.className = 'w-2 h-2 rounded-full bg-ok shrink-0';
-    msg.textContent = '✓ Audyt zaliczony: odpowiedź w 100% ugruntowana w zweryfikowanych źródłach.';
-    banner.className = 'p-2.5 rounded-lg border border-ok/30 bg-ok/[0.05] flex items-center gap-2.5 text-xs font-mono text-ok';
-  } else if (key === 'direct') {
-    dot.className = 'w-2 h-2 rounded-full bg-ok shrink-0';
-    msg.textContent = '✓ Odpowiedź bezpośrednia z pamięci dialogu (pominięcie bazy RAG).';
-    banner.className = 'p-2.5 rounded-lg border border-ok/30 bg-ok/[0.05] flex items-center gap-2.5 text-xs font-mono text-ok';
-  }
+  banner.className = `p-3 rounded-lg flex items-center gap-2.5 text-[11.5px] font-mono transition-colors duration-500 ${tone.box}`;
+  dot.className = `w-2 h-2 rounded-full shrink-0 ${tone.dot} ${state.pulse}`;
+  msg.textContent = t(state.key);
+  msg.dataset.auditKey = state.key;
 }
 
 function revealAnswer(text, citations) {
@@ -1213,6 +1365,10 @@ function revealAnswer(text, citations) {
   }
   answerEl.innerHTML = parsed;
   answerEl.classList.remove('hidden');
+  // Kulminacja przebiegu: treść wjeżdża wycieraczką od góry
+  answerEl.classList.remove('answer-reveal');
+  void answerEl.offsetWidth;
+  answerEl.classList.add('answer-reveal');
 
   answerEl.querySelectorAll('.inline-cite').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1230,12 +1386,170 @@ function revealAnswer(text, citations) {
 }
 
 
+/* ═══ Taśma przebiegu: gdzie poszedł czas i co realnie kosztowało ═══ */
+// Jedyny węzeł liczony na własnym sprzęcie. Reszta dotyka API, więc kosztuje tokeny.
+const LOCAL_NODES = new Set(['local_rerank']);
+const TAPE_LABEL = {
+  router: 'router',
+  retrieve: 'retrieve',
+  local_rerank: 'rerank · GPU',
+  grade_documents: 'grade',
+  rewrite_query: 'rewrite',
+  generate: 'generate',
+  hallucination_check: 'guard'
+};
+
+let runSegments = [];
+
+// Strumień na żywo niesie duration_ms, replay niesie latency_ms — przyjmujemy oba.
+function stepDuration(d) {
+  const v = (typeof d.duration_ms === 'number') ? d.duration_ms : d.latency_ms;
+  return (typeof v === 'number' && isFinite(v) && v >= 0) ? v : 0;
+}
+
+function renderRunTape(totalMs) {
+  const bar = $('#tapeBar'), tape = $('#runTape'), total = $('#tapeTotal');
+  if (!bar || !tape || !runSegments.length) return;
+
+  const sum = runSegments.reduce((acc, s) => acc + s.ms, 0) || 1;
+  bar.innerHTML = '';
+
+  runSegments.forEach((s, i) => {
+    const pct = (s.ms / sum) * 100;
+    const seg = el('div', 'tape-seg');
+    const label = TAPE_LABEL[s.node] || s.node;
+    seg.dataset.cost = s.local ? 'local' : 'cloud';
+    seg.dataset.node = s.node;
+    seg.style.flex = Math.max(pct, 0.7) + ' 1 0%';
+    seg.style.animationDelay = (i * 55) + 'ms';
+    seg.title = `${label} · ${(s.ms / 1000).toFixed(2)}s · ${s.local ? t('tapeLocal') : t('tapeCloud')}`;
+    if (pct > 7) {
+      seg.innerHTML = `<span class="tape-lbl">${label} ${(s.ms / 1000).toFixed(1)}s</span>`;
+    }
+    seg.addEventListener('mouseenter', () => highlightTapeStep(s.node, true));
+    seg.addEventListener('mouseleave', () => highlightTapeStep(s.node, false));
+    bar.append(seg);
+  });
+
+  if (total) total.textContent = ((totalMs || sum) / 1000).toFixed(1) + 's';
+  tape.classList.remove('hidden');
+}
+
+function highlightTapeStep(node, on) {
+  document.querySelectorAll(`.tl-section[data-node="${node}"]`).forEach(sec => {
+    sec.classList.toggle('is-tapelit', on);
+    if (on) sec.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  });
+}
+
+
+/* ═══ Ambient: zapisany przebieg odtwarzany, dopóki nikt nie zadał pytania ═══ */
+// Korzysta z Replay Engine (/api/v1/replay), więc nie kosztuje ani jednego tokenu.
+// Steruje wyłącznie grafem — nigdy osią czasu ani panelem odpowiedzi.
+let ambientES = null, ambientTimer = null, ambientCycles = 0, ambientStopped = false;
+const AMBIENT_MAX_CYCLES = 3;
+
+function ambientAllowed() {
+  return !ambientStopped
+    && !running
+    && ambientCycles < AMBIENT_MAX_CYCLES
+    && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function softResetGraph() {
+  document.querySelectorAll('.gnode').forEach(n => {
+    n.dataset.state = 'idle';
+    const m = n.querySelector('.gnode-meta');
+    if (m) m.textContent = '—';
+  });
+  document.querySelectorAll('.edge').forEach(e => e.classList.remove('is-taken', 'is-flowing'));
+  document.querySelectorAll('.edge-label').forEach(l => l.classList.remove('is-hot'));
+}
+
+function closeAmbientStream() {
+  if (ambientES) {
+    try { ambientES.close(); } catch (_) {}
+    ambientES = null;
+  }
+  const strip = $('#graphStrip');
+  if (strip) strip.classList.remove('is-ambient');
+  const badge = $('#ambientBadge');
+  if (badge) { badge.classList.add('hidden'); badge.classList.remove('flex'); }
+}
+
+function stopAmbient() {
+  ambientStopped = true;
+  clearTimeout(ambientTimer);
+  const wasRunning = !!ambientES;
+  closeAmbientStream();
+  if (wasRunning) softResetGraph();
+}
+
+function endAmbientCycle() {
+  closeAmbientStream();
+  ambientCycles++;
+  ambientTimer = setTimeout(() => {
+    softResetGraph();
+    if (ambientAllowed()) startAmbient();
+  }, 4500);
+}
+
+function startAmbient() {
+  if (!ambientAllowed()) return;
+
+  let es;
+  try { es = new EventSource('/api/v1/replay/standard_rag?tempo=4'); } catch (_) { return; }
+  ambientES = es;
+
+  const strip = $('#graphStrip');
+  if (strip) strip.classList.add('is-ambient');
+  const badge = $('#ambientBadge');
+  if (badge) { badge.classList.remove('hidden'); badge.classList.add('flex'); }
+
+  let activeEdge = null;
+
+  es.addEventListener('node_start', e => {
+    if (ambientES !== es) return;
+    try {
+      const d = JSON.parse(e.data);
+      if (activeEdge) flowEdge(activeEdge, false);
+      const edgeId = getEdgeId(d.edge_from || 'START', d.node);
+      if (edgeId) { activeEdge = edgeId; flowEdge(edgeId, true); }
+      setNode(d.node, 'active', t('running'));
+    } catch (_) {}
+  });
+
+  es.addEventListener('step', e => {
+    if (ambientES !== es) return;
+    try {
+      const d = JSON.parse(e.data);
+      setNode(d.node, 'done', (stepDuration(d) / 1000).toFixed(2) + 's');
+    } catch (_) {}
+  });
+
+  es.addEventListener('complete', () => {
+    if (ambientES !== es) return;
+    if (activeEdge) flowEdge(activeEdge, false);
+    setNode('__end', 'done');
+    endAmbientCycle();
+  });
+
+  es.onerror = () => {
+    if (ambientES !== es) return;
+    stopAmbient();
+  };
+}
+
+
 /* ═══ 100% TRYB NA ŻYWO: Server-Sent Events (SSE) ═══ */
 function runLive(queryText) {
   if (!queryText || !queryText.trim()) return;
+  stopAmbient();
   resetAll();
   abort = false;
   running = true;
+  const strip = $('#graphStrip');
+  if (strip) strip.classList.add('is-running');
   $('#sendBtn').disabled = true;
   $('#askedText').textContent = queryText;
   $('#emptyState').classList.add('hidden');
@@ -1340,7 +1654,7 @@ function runLive(queryText) {
       if (node === 'router') {
         const isRet = d.route === 'retrieve';
         if (!isRet) isDirectAnswer = true;
-        body.innerHTML = `<p class="text-[12px] text-white leading-snug">${isRet ? t('decisionRetrieve') : t('decisionDirect')}</p>`;
+        body.innerHTML = `<p class="text-[13px] text-white leading-snug">${isRet ? t('decisionRetrieve') : t('decisionDirect')}</p>`;
       } else if (node === 'retrieve') {
         renderRetrieve(body, d);
       } else if (node === 'local_rerank') {
@@ -1374,9 +1688,11 @@ function runLive(queryText) {
         }
       }
 
-      // Zamknięcie węzła
-      setNode(node, 'done', (d.duration_ms / 1000).toFixed(2) + 's');
-      tlClose(sec, d.duration_ms);
+      // Zamknięcie węzła + zapis segmentu do taśmy przebiegu
+      const ms = stepDuration(d);
+      runSegments.push({ node, ms, local: LOCAL_NODES.has(node) });
+      setNode(node, 'done', (ms / 1000).toFixed(2) + 's');
+      tlClose(sec, ms);
 
     } catch(err) {
       console.error("Błąd parsowania zdarzenia step:", err);
@@ -1389,7 +1705,7 @@ function runLive(queryText) {
         const err = JSON.parse(e.data);
         const sec = tlSection(err.node || 'system');
         const body = sec.querySelector('[data-body]');
-        body.innerHTML = `<p class="text-[12px] text-bad font-mono">Błąd wykonania: ${err.message}</p>`;
+        body.innerHTML = `<p class="text-[13px] text-bad font-mono">Błąd wykonania: ${err.message}</p>`;
         setNode(err.node || 'router', 'idle', 'error');
       } catch(_) {}
     }
@@ -1405,14 +1721,20 @@ function runLive(queryText) {
       if (d.total_time_ms) {
         $('#hdrLatency').textContent = (d.total_time_ms / 1000).toFixed(2) + 's';
       }
+      // Graf mógł zakończyć się mimo negatywnego werdyktu (wyczerpany limit regeneracji).
+      // Odpowiedź wtedy pokazujemy, ale nie wolno jej oznaczyć jako ugruntowanej.
       if ($('#answerText').classList.contains('hidden') && pendingGeneration) {
         revealAnswer(pendingGeneration, pendingCitations);
-        setAuditStatus(isDirectAnswer ? 'direct' : 'passed');
+        if (isDirectAnswer) setAuditStatus('direct');
+        else setAuditStatus(currentAuditKey === 'failed_grounding' ? 'ungrounded' : 'passed');
       }
+      renderRunTape(d.total_time_ms);
     } catch(err) {}
     finally {
       es.close();
       clearInterval(tick);
+      const strip = $('#graphStrip');
+      if (strip) strip.classList.remove('is-running');
       $('#sendBtn').disabled = false;
       running = false;
     }
@@ -1422,6 +1744,12 @@ function runLive(queryText) {
     console.warn("Zakończono strumień SSE lub rozłączono.");
     es.close();
     clearInterval(tick);
+    const strip = $('#graphStrip');
+    if (strip) strip.classList.remove('is-running');
+    // Nie zostawiamy węzła wiecznie pulsującego, jeśli strumień padł w połowie.
+    document.querySelectorAll('.gnode[data-state="active"]').forEach(n => { n.dataset.state = 'idle'; });
+    if (currentActiveEdge) flowEdge(currentActiveEdge, false);
+    if (runSegments.length) renderRunTape(null);
     $('#sendBtn').disabled = false;
     running = false;
   };
@@ -1448,20 +1776,20 @@ async function loadKnowledgeDocuments() {
       item.innerHTML = `
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2 mb-1">
-            <span class="px-1.5 py-0.5 rounded font-mono text-[9.5px] uppercase font-semibold bg-line text-fg2">${doc.domain}</span>
-            <span class="text-[12.5px] font-medium text-white truncate">${doc.title || doc.filename}</span>
-            ${doc.ocr_used ? `<span class="px-1 rounded bg-warn/15 text-warn font-mono text-[9px]">OCR</span>` : ''}
-            ${doc.tables_count > 0 ? `<span class="px-1 rounded bg-live/15 text-live font-mono text-[9px]">${doc.tables_count} tab.</span>` : ''}
+            <span class="px-1.5 py-0.5 rounded font-mono text-[10px] uppercase font-semibold bg-line text-fg2">${doc.domain}</span>
+            <span class="text-[13px] font-medium text-white truncate">${doc.title || doc.filename}</span>
+            ${doc.ocr_used ? `<span class="px-1 rounded bg-warn/15 text-warn font-mono text-[10px]">OCR</span>` : ''}
+            ${doc.tables_count > 0 ? `<span class="px-1 rounded bg-live/15 text-live font-mono text-[10px]">${doc.tables_count} tab.</span>` : ''}
           </div>
           <p class="font-mono text-[10px] text-fg3 truncate">${doc.relative_path} · ${(doc.size_bytes / 1024).toFixed(1)} KB</p>
         </div>
         <div class="flex items-center gap-1.5 shrink-0">
-          <button class="preview-doc-btn px-2.5 py-1 rounded bg-panel border border-line hover:border-line2 text-[11px] font-mono text-fg2 hover:text-white transition flex items-center gap-1"
+          <button class="preview-doc-btn px-2.5 py-1 rounded bg-panel border border-line hover:border-line2 text-[11.5px] font-mono text-fg2 hover:text-white transition flex items-center gap-1"
                   data-filename="${doc.filename}" data-domain="${doc.domain}">
             <span>Podgląd</span>
             <i data-lucide="eye" class="w-3 h-3"></i>
           </button>
-          <button class="ask-doc-btn px-2.5 py-1 rounded bg-white hover:bg-neutral-200 text-[11px] font-mono font-medium text-black transition"
+          <button class="ask-doc-btn px-2.5 py-1 rounded bg-white hover:bg-neutral-200 text-[11.5px] font-mono font-medium text-black transition"
                   data-doc="${doc.title || doc.filename}">
             Zapytaj ➜
           </button>
@@ -1523,7 +1851,7 @@ $('#uploadForm').addEventListener('submit', async e => {
 
   submitBtn.disabled = true;
   submitBtn.innerHTML = '<span>Przetwarzanie OCR i Chunking...</span>';
-  statusMsg.className = 'text-[12px] p-2.5 rounded-lg border border-live/30 bg-live/10 text-live font-mono block';
+  statusMsg.className = 'text-[13px] p-2.5 rounded-lg border border-live/30 bg-live/10 text-live font-mono block';
   statusMsg.textContent = `Wysyłanie ${file.name} do potoku normalizacji...`;
 
   try {
@@ -1533,7 +1861,7 @@ $('#uploadForm').addEventListener('submit', async e => {
     });
     const data = await res.json();
     if (res.ok && data.success) {
-      statusMsg.className = 'text-[12px] p-2.5 rounded-lg border border-ok/30 bg-ok/10 text-ok font-mono block';
+      statusMsg.className = 'text-[13px] p-2.5 rounded-lg border border-ok/30 bg-ok/10 text-ok font-mono block';
       statusMsg.innerHTML = `✓ Zindeksowano: <b>${data.title}</b> (${data.tables_count} tabel, OCR: ${data.ocr_used ? 'Tak' : 'Nie'}). Dodano do bazy wektorowej!`;
       fileInput.value = '';
       loadKnowledgeDocuments();
@@ -1541,7 +1869,7 @@ $('#uploadForm').addEventListener('submit', async e => {
       throw new Error(data.detail || 'Błąd przetwarzania pliku.');
     }
   } catch(err) {
-    statusMsg.className = 'text-[12px] p-2.5 rounded-lg border border-bad/30 bg-bad/10 text-bad font-mono block';
+    statusMsg.className = 'text-[13px] p-2.5 rounded-lg border border-bad/30 bg-bad/10 text-bad font-mono block';
     statusMsg.textContent = `Błąd: ${err.message}`;
   } finally {
     submitBtn.disabled = false;
@@ -1565,11 +1893,11 @@ async function checkHealth() {
     if (d.langsmith_active) {
       $('#langsmithDot').className = 'w-1.5 h-1.5 rounded-full bg-ok';
       $('#langsmithStatus').textContent = 'ON';
-      $('#langsmithStatus').className = 'font-mono text-[9.5px] text-ok';
+      $('#langsmithStatus').className = 'font-mono text-[10px] text-ok';
     } else {
       $('#langsmithDot').className = 'w-1.5 h-1.5 rounded-full bg-fg3';
       $('#langsmithStatus').textContent = 'OFF';
-      $('#langsmithStatus').className = 'font-mono text-[9.5px] text-fg3';
+      $('#langsmithStatus').className = 'font-mono text-[10px] text-fg3';
     }
     if (d.knowledge_base_documents) {
       $('#kbCountBadge').textContent = d.knowledge_base_documents;
@@ -1578,11 +1906,16 @@ async function checkHealth() {
 }
 
 /* ═══ Zdarzenia i Inicjalizacja ═══ */
-document.querySelectorAll('.test-card, .quick-pill').forEach(card => {
-  card.addEventListener('click', () => {
-    const query = card.dataset.query;
+document.querySelectorAll('.test-card').forEach(card => {
+  const fire = () => {
+    const query = cardQuery(card);
     $('#queryInput').value = query;
     runLive(query);
+  };
+  card.addEventListener('click', fire);
+  // Karta jest kafelkiem, nie przyciskiem — klawiatura musi ją obsłużyć tak samo.
+  card.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fire(); }
   });
 });
 
@@ -1620,12 +1953,34 @@ $('#openUploadModalBtn').addEventListener('click', () => {
 });
 $('#closeUploadModalBtn').addEventListener('click', () => $('#uploadModal').classList.add('hidden'));
 
+// Esc zamyka dowolny otwarty modal; kliknięcie w tło zamyka ten, w który trafiło.
+const ALL_MODALS = ['#uploadModal', '#docsModal', '#docPreviewModal'];
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  ALL_MODALS.forEach(sel => $(sel)?.classList.add('hidden'));
+});
+['#uploadModal', '#docsModal'].forEach(sel => {
+  $(sel)?.addEventListener('click', e => {
+    if (e.target === $(sel)) $(sel).classList.add('hidden');
+  });
+});
+
+// Pierwsza interakcja użytkownika kończy tryb ambient.
+['#queryInput', '#sendBtn', '#openDocsModalBtn', '#openUploadModalBtn'].forEach(sel => {
+  $(sel)?.addEventListener('focus', stopAmbient);
+  $(sel)?.addEventListener('click', stopAmbient);
+});
+document.querySelectorAll('.test-card').forEach(c => c.addEventListener('mousedown', stopAmbient));
+
 // Start
 lucide.createIcons();
 applyLang();
 checkHealth();
 setInterval(checkHealth, 10000);
 loadKnowledgeDocuments();
+
+// Graf ożywa sam: zapisany przebieg z Replay Engine, zero tokenów, wyłącznie warstwa grafu.
+setTimeout(startAmbient, 1400);
 </script>
 
 </body>
