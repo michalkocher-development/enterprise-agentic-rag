@@ -107,4 +107,14 @@
   2. Implementacja wzorca **Parent-Document Retrieval** (`HierarchicalChunker`): drobne *Child Chunks* (~250 zn.) indeksowane są w wektorówce jako precyzyjne haczyki wyszukiwawcze, po czym retriever automatycznie podmienia je na pełne *Parent Chunks* (~1200 zn. / całe tabele) z pamięci `parent_docstore`.
 * **Konsekwencje**: Eliminacja rozmycia semantycznego, chirurgiczna precyzja odnajdywania liczb w tabelach i zachowanie 100% kontekstu dla sędziego halucynacji i syntezy LLM. Indeks powiększony do 18 testów (100% passed).
 
+### ADR-008: Interfejs Chatbota w Gradio i Deployment na Hugging Face Spaces
+* **Data**: 2026-09-02
+* **Kontekst**: Potrzebny jest przyjazny, estetyczny interfejs webowy demonstrujący działanie grafu LangGraph, podgląd cytowanych tabel oraz darmowy hosting w chmurze bez ponoszenia kosztów AWS.
+* **Decyzja**:
+  1. Wybór biblioteki **Gradio 6** (`app.py` w `gr.Blocks`) ze streamingiem kroków węzłów agenta i dwukolumnowym układem (Czat + Inspektor LLMOps).
+  2. Przygotowanie projektu pod **Hugging Face Spaces** (darmowy tier 16 GB RAM / 2 vCPU):
+     - Automatyczny fallback inferencji PyTorch: CUDA na maszynie deweloperskiej, CPU w chmurze HF Spaces.
+     - Metadane YAML w `README.md`.
+* **Konsekwencje**: Pełna wizualizacja procesu myślenia agenta na żywo, natychmiastowe uruchomienie aplikacji z dyskowego cache'u i możliwość 1-kliknięciowego udostępnienia działającego demo w chmurze. Zestaw testów rozszerzony do 21/21 passed.
+
 

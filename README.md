@@ -1,5 +1,18 @@
+---
+title: BigTech Financial Agentic RAG
+emoji: 🧠
+colorFrom: blue
+colorTo: indigo
+sdk: gradio
+sdk_version: 6.26.0
+app_file: app.py
+pinned: false
+license: mit
+---
+
 # 🧠 BigTech Financial Agentic RAG — AI Engineering & LLMOps
 
+[![Hugging Face Spaces](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-Spaces-yellow)](https://huggingface.co/spaces)
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch CUDA](https://img.shields.io/badge/PyTorch-2.6%20CUDA%2012.4-EE4C2C.svg?logo=pytorch)](https://pytorch.org/)
 [![LangGraph](https://img.shields.io/badge/Orchestration-LangGraph-orange.svg)](https://github.com/langchain-ai/langgraph)
