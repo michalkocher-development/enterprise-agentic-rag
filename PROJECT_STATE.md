@@ -137,6 +137,21 @@
   3. Serwowanie dedykowanego frontendu HTML5 + Tailwind CSS a la Perplexity bezpośrednio na ścieżce głównej `/`.
 * **Konsekwencje**: Pełna separacja warstw (REST API vs Frontend), pamięć konwersacyjna (`thread_id`), streaming SSE, 30/30 testów regresyjnych na zielono.
 
+### ADR-011: Multi-Stage Telemetry, Werdykty Gradera i Dynamiczna Ingestia Knowledge Lake
+* **Data**: 2026-09-02
+* **Kontekst**: Wcześniejsza wektorówka wymagała restartu serwera do wczytania nowych plików z Knowledge Lake, a UI nie pokazywało szczegółowych decyzji sędziego merytorycznego ani pętli samonaprawczych (rewrite query), gdy żaden chunk nie pasował.
+* **Decyzja**:
+  1. Wdrożenie `add_markdown_file()` w `FinancialVectorStore`: przyrostowy chunking, wektoryzacja i zasilenie pamięci `parent_docstore` oraz zapisu cache w czasie rzeczywistym.
+  2. Rozbudowa stanu grafu i węzła `grade_documents`: model zwraca ustrukturyzowany werdykt (`relevant` / `irrelevant`) wraz ze zwięzłym uzasadnieniem słownym dla każdego ocenianego chunku.
+  3. Uogólnienie węzła `rewrite_node` do uniwersalnego optymalizatora zapytań we wszystkich domenach (dyplomy, prawo, finanse, badania).
+  4. Dodanie automatycznej synchronizacji zmiennych środowiskowych `os.environ` dla natywnego śledzenia LangSmith.
+* **Konsekwencje**: 100% natychmiastowa dostępność wgrywanych dokumentów, pełna transparentność decyzji modelu dla użytkownika, odporność na pętle samonaprawcze.
 
-
-
+### ADR-012: Interaktywny Eksplorator Bazy Wiedzy (Knowledge Lake Explorer) w UI i API
+* **Data**: 2026-09-02
+* **Kontekst**: Użytkownik potrzebuje bezpośredniego podglądu z poziomu UI, jakie dokumenty znajdują się w bazie wiedzy, ile zawierają tabel, czy przeszły przez OCR oraz możliwości przeczytania ich pełnej treści przed zadaniem pytania.
+* **Decyzja**:
+  1. Wdrożenie endpointu `GET /api/v1/documents/{domain}/{filename}` zwracającego pełną treść wybranego pliku Markdown.
+  2. Dodanie w UI przycisku nagłówka `Baza Dokumentów` z licznikiem na żywo oraz dedykowanej zakładki `📁 Baza Wiedzy` w prawym panelu analitycznym.
+  3. Stworzenie interaktywnego modala z filtrami domenowymi (`Finanse`, `Edukacja / OCR`, `Prawo`), wyszukiwarką czasu rzeczywistego oraz akcjami `🔍 Podgląd treści` i `💬 Zadaj pytanie o ten dokument`.
+* **Konsekwencje**: Kompletny, zintegrowany interfejs Knowledge Lake, gdzie użytkownik może badać i weryfikować zbiór wiedzy bez opuszczania aplikacji.
