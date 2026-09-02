@@ -7,10 +7,16 @@ ENV PYTHONUNBUFFERED=1 \
     PORT=7860 \
     DEVICE=cpu
 
-# Podstawowe narzędzia systemowe
+# Podstawowe narzędzia systemowe oraz biblioteki wymagane przez OpenCV (RapidOCR)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \
+    libgl1 \
+    libglib2.0-0 \
+    libgomp1 \
+    libxcb1 \
+    libx11-6 \
+    libxext6 \
     && rm -rf /var/lib/apt/lists/*
 
 # Konfiguracja użytkownika bez uprawnień roota (wymóg bezpieczeństwa Hugging Face Spaces)
