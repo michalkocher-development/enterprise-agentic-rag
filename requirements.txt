@@ -5,8 +5,12 @@ langchain-text-splitters>=1.1.0
 langgraph>=1.2.10
 langsmith>=0.12.0
 pdfplumber>=0.11.0
-gradio>=6.0.0
 rapidocr-onnxruntime>=1.4.0
+
+# API & Web Server (FastAPI & SSE)
+fastapi>=0.115.0
+uvicorn[standard]>=0.34.0
+python-multipart>=0.0.20
 
 # Deep Learning & Hardware Acceleration
 # Uwaga: Dla akceleracji CUDA na GPU zainstaluj torch z index-url https://download.pytorch.org/whl/cu124

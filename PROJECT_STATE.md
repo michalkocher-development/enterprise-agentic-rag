@@ -195,5 +195,17 @@
 * **Decyzja**: Scalenie gałęzi `ui/workbench-visual-redesign` (commit `1c005cd`) do `main` w trybie fast-forward.
 * **Konsekwencje**: Główna linia projektu `main` posiada zunifikowany, dopracowany wizualnie i w 100% sprawny technicznie interfejs badawczy AI Engineering / LLMOps Lab.
 
+### ADR-016: Produkcyjna Konteneryzacja Docker i Wdrożenie na Hugging Face Spaces
+* **Data**: 2026-09-02
+* **Kontekst**: Wdrożenie platformy w chmurze bez ponoszenia opłat serwerowych (eliminacja kosztów AWS GPU/CPU) przy jednoczesnym zachowaniu wysokiej wydajności (16 GB RAM) i natychmiastowego czasu odpowiedzi.
+* **Decyzja**:
+  1. Wybór darmowej infrastruktury **Hugging Face Spaces (Docker SDK)** oferującej bezpłatnie **2 vCPU i 16 GB RAM**.
+  2. Utworzenie zoptymalizowanego `Dockerfile` na bazie `python:3.12-slim-bookworm` z instalacją PyTorch w wydaniu CPU (`--index-url https://download.pytorch.org/whl/cpu`), co zredukowało rozmiar obrazu o ~3.5 GB.
+  3. Pre-cache wag modelu Cross-Encoder (`BAAI/bge-reranker-base`) podczas budowania obrazu, eliminując opóźnienia cold-start przy uruchamianiu kontenera.
+  4. Skonfigurowanie dedykowanego użytkownika `user` (UID 1000) oraz portu `7860` zgodnie ze standardami bezpieczeństwa Hugging Face Spaces.
+  5. Zaktualizowanie metadanych `README.md` (YAML frontmatter dla Spaces) oraz `.dockerignore`.
+* **Konsekwencje**: Kompletna, przenośna konteneryzacja umożliwiająca uruchomienie platformy Enterprise Agentic RAG jednym poleceniem na Hugging Face Spaces lub dowolnym środowisku Docker za 0 zł.
+
+
 
 

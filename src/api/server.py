@@ -691,3 +691,11 @@ if static_dir.exists():
     from fastapi.staticfiles import StaticFiles
     app.mount("/", StaticFiles(directory=str(static_dir), html=True), name="static")
 
+
+if __name__ == "__main__":
+    import os
+    import uvicorn
+
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("src.api.server:app", host="0.0.0.0", port=port, reload=False)
+

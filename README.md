@@ -1,11 +1,10 @@
 ---
-title: Enterprise Agentic RAG Platform
-emoji: 🧠
-colorFrom: blue
-colorTo: indigo
-sdk: gradio
-sdk_version: 6.26.0
-app_file: app.py
+title: Enterprise Agentic RAG Workbench
+emoji: ⚡
+colorFrom: gray
+colorTo: blue
+sdk: docker
+app_port: 7860
 pinned: false
 license: mit
 ---
