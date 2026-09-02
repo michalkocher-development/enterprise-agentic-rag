@@ -96,6 +96,7 @@ def generate_node(state: GraphState) -> Dict[str, Any]:
 
         return {
             "generation": generation,
+            "documents": documents,
             "regeneration_count": reg_count,
             "messages": [HumanMessage(content=question), AIMessage(content=generation)],
         }

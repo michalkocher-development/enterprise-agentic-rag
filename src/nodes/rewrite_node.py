@@ -1,4 +1,4 @@
-"""Węzeł transformacji zapytania (Rewrite Query Node) — samokorekta w pętli agentowej."""
+"""Węzeł transformacji zapytania (Rewrite Query Node) — adaptacyjna samokorekta w pętli agentowej."""
 
 from typing import Any, Dict
 from langchain_core.prompts import ChatPromptTemplate
@@ -12,7 +12,7 @@ from src.state import GraphState
 def rewrite_node(state: GraphState) -> Dict[str, Any]:
     """Węzeł grafu przeformułowujący zapytanie, gdy poprzednie wyszukiwanie nie przyniosło rezultatów.
 
-    Optymalizuje słowa kluczowe i intencję zapytania pod kątem sprawozdań finansowych Big Tech.
+    Działa w sposób uniwersalny dla wszystkich domen: finanse, prawo, edukacja, whitepapery AI.
     """
     settings = get_settings()
     question = state["question"]
@@ -26,11 +26,13 @@ def rewrite_node(state: GraphState) -> Dict[str, Any]:
     )
 
     system_prompt = (
-        "Jesteś wyspecjalizowanym ekspertem wyszukiwania informacji w raportach finansowych (10-K, 10-Q).\n"
-        "Użytkownik zadał pytanie, jednak wstępne przeszukanie bazy raportów NVIDIA i Alphabet nie przyniosło wystarczających danych.\n"
-        "Twoim celem jest przeformułowanie i zoptymalizowanie zapytania, aby wydobyć kluczowe terminy finansowe "
-        "(np. przychody, segment Data Center, Capex, marża brutto, H100, Blackwell, TPU, chmura).\n"
-        "Zwróć WYŁĄCZNIE samo zoptymalizowane zapytanie, bez żadnych wstępów, cudzysłowów ani komentarzy."
+        "Jesteś ekspertem ds. optymalizacji zapytań wyszukiwawczych (Search Query Optimizer) w wielodomenowej bazie wiedzy.\n"
+        "Wstępne przeszukanie bazy dokumentów dla zadanego pytania nie zwróciło relewantnych wyników lub dokumenty zostały odrzucone przez filtr.\n"
+        "Twoim zadaniem jest przeformułować zapytanie, aby zmaksymalizować prawdopodobieństwo odnalezienia właściwych informacji:\n"
+        "- Zidentyfikuj kluczowe pojęcia, słowa kluczowe, nazwy własne (np. numery dokumentów, sygnatury, tytuły, wskaźniki).\n"
+        "- Usuń zbędne słowa gramatyczne i konwersacyjne ('jaki był', 'proszę podaj').\n"
+        "- Zachowaj dokładne oznaczenia (np. '009', '10-Q', 'FY2025', 'EU AI Act').\n"
+        "- Zwróć WYŁĄCZNIE samo zoptymalizowane zapytanie, bez żadnych wstępów, cudzysłowów ani komentarzy."
     )
 
     prompt = ChatPromptTemplate.from_messages(
@@ -38,9 +40,9 @@ def rewrite_node(state: GraphState) -> Dict[str, Any]:
             ("system", system_prompt),
             (
                 "human",
-                "Pierwotne pytanie: {original_question}\n"
+                "Pierwotne pytanie użytkownika: {original_question}\n"
                 "Ostatnie (nieudane) zapytanie: {current_question}\n\n"
-                "Zoptymalizowane nowe zapytanie do bazy wektorowej:",
+                "Zoptymalizowane zapytanie słów kluczowych do bazy wektorowej:",
             ),
         ]
     )
@@ -53,9 +55,15 @@ def rewrite_node(state: GraphState) -> Dict[str, Any]:
                 "current_question": question,
             }
         )
-    ).strip()
+    ).strip().strip('"').strip("'")
 
     return {
         "question": new_question,
         "retry_count": retry_count + 1,
+        "rewrite_info": {
+            "original_query": original_question,
+            "failed_query": question,
+            "new_query": new_question,
+            "retry_number": retry_count + 1,
+        },
     }

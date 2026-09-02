@@ -1,6 +1,6 @@
 """Definicja stanu grafu (GraphState) przepływającego przez węzły LangGraph."""
 
-from typing import Annotated, List, Optional, TypedDict
+from typing import Annotated, Any, Dict, List, Optional, TypedDict
 from langchain_core.documents import Document
 from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
@@ -44,3 +44,10 @@ class GraphState(TypedDict):
 
     route: Optional[str]
     """Kierunek wyznaczony przez Router: 'retrieve' (wymaga RAG) lub 'direct_answer' (odpowiedź z pamięci)."""
+
+    graded_verdicts: Optional[List[Dict[str, Any]]]
+    """Szczegółowe oceny i uzasadnienia odrzuceń/akceptacji dla każdego chunku z LLM Grader."""
+
+    rewrite_info: Optional[Dict[str, Any]]
+    """Metadane autokorekty zapytania (pierwotne, nieudane, nowe zapytanie)."""
+

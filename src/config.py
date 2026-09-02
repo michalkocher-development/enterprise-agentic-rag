@@ -1,10 +1,15 @@
 """Moduł konfiguracji aplikacji — zarządzanie zmiennymi środowiskowymi i profilami sprzętowymi."""
 
 from functools import lru_cache
+import os
 from typing import Optional
+from dotenv import load_dotenv
 import torch
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Ładujemy zmienne z pliku .env do środowiska systemowego (dla LangSmith i SDK Google)
+load_dotenv(override=True)
 
 
 class AppSettings(BaseSettings):
@@ -58,5 +63,15 @@ class AppSettings(BaseSettings):
 
 @lru_cache(maxsize=1)
 def get_settings() -> AppSettings:
-    """Zwraca cache'owaną instancję konfiguracji aplikacji."""
-    return AppSettings()
+    """Zwraca cache'owaną instancję konfiguracji aplikacji i synchronizuje os.environ z LangSmith."""
+    settings = AppSettings()
+    
+    # Synchronizacja os.environ dla natywnego tracera LangSmith
+    if settings.langchain_api_key:
+        os.environ["LANGCHAIN_TRACING_V2"] = "true" if settings.langchain_tracing_v2 else "false"
+        os.environ["LANGCHAIN_API_KEY"] = settings.langchain_api_key
+        os.environ["LANGCHAIN_ENDPOINT"] = settings.langchain_endpoint
+        os.environ["LANGCHAIN_PROJECT"] = settings.langchain_project
+        os.environ["GOOGLE_API_KEY"] = settings.google_api_key
+
+    return settings

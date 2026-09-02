@@ -150,10 +150,9 @@ async def upload_document(
 
         saved_path = normalizer.save_to_knowledge_lake(norm_doc)
 
-        # Zasilenie bazy wektorowej nowym plikiem
+        # Dynamiczne zasilenie bazy wektorowej nowym dokumentem
         vs = get_vector_store()
-        # Wczytanie do wektorówki
-        vs.load_from_directory()
+        vs.add_markdown_file(saved_path, domain=domain)
 
         return IngestResponse(
             success=True,
@@ -383,6 +382,17 @@ async def chat_stream_endpoint(request: ChatRequest):
                         }
                         for idx, d in enumerate(docs[:6])
                     ]
+
+                elif node_name == "grade_documents":
+                    payload["graded_verdicts"] = state_update.get("graded_verdicts", [])
+                    payload["accepted_count"] = len(state_update.get("documents", []))
+                    payload["rejected_count"] = len(state_update.get("graded_verdicts", [])) - len(state_update.get("documents", []))
+                    payload["web_search_needed"] = state_update.get("web_search_needed", False)
+
+                elif node_name == "rewrite_query":
+                    payload["rewrite_info"] = state_update.get("rewrite_info", {})
+                    payload["new_question"] = state_update.get("question", "")
+                    payload["retry_count"] = state_update.get("retry_count", 0)
 
                 elif node_name == "generate":
                     docs = state_update.get("documents", [])

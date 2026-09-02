@@ -14,7 +14,7 @@ from src.ingestion.hierarchical_chunker import HierarchicalChunker
 
 
 class FinancialVectorStore:
-    """Zarządca bazy wektorowej dla raportów finansowych z obsługą Parent-Document Retrieval i PDF."""
+    """Zarządca bazy wektorowej z obsługą Parent-Document Retrieval, PDF oraz Knowledge Lake."""
 
     def __init__(
         self,
@@ -36,7 +36,7 @@ class FinancialVectorStore:
 
     @staticmethod
     def _detect_company(file_path: Path) -> str:
-        """Rozpoznaje firmę na podstawie nazwy pliku."""
+        """Rozpoznaje firmę lub domenę na podstawie ścieżki i nazwy pliku."""
         stem = file_path.stem.lower()
         if "nvidia" in stem:
             return "NVIDIA"
@@ -50,7 +50,9 @@ class FinancialVectorStore:
             return "Meta"
         elif "apple" in stem:
             return "Apple"
-        return file_path.stem.capitalize()
+        elif "ai_act" in stem:
+            return "EU Governance"
+        return file_path.parent.name.capitalize() if file_path.parent.name != "financial_reports" else file_path.stem.capitalize()
 
     def save_to_disk(self) -> None:
         """Zapisuje indeks wektorowy dzieci oraz słownik nadrzędnych dokumentów (rodziców) na dysk."""
@@ -90,15 +92,24 @@ class FinancialVectorStore:
         self,
         reports_dir: str = "data/financial_reports",
         pdf_dir: str = "data/pdf_reports",
+        kb_dir: str = "data/knowledge_base",
         force_reload: bool = False,
     ) -> int:
-        """Wczytuje raporty Markdown oraz PDF, wykonując hierarchiczny chunking i zapisując cache."""
+        """Wczytuje raporty finansowe, PDF oraz wielodomenowy Markdown Knowledge Lake."""
         if not force_reload and self.load_from_disk():
-            return -1  # Oznaczenie wczytania z gotowego cache'u
+            # Sprawdzamy czy w knowledge_base są nowe pliki, których nie ma w docstore
+            path_kb = Path(kb_dir)
+            if path_kb.exists():
+                indexed_sources = {d.metadata.get("source") for d in self.parent_docstore.values()}
+                missing_files = [f for f in path_kb.rglob("*.md") if str(f) not in indexed_sources]
+                if missing_files:
+                    for mf in missing_files:
+                        self.add_markdown_file(mf, domain=mf.parent.name)
+            return -1
 
         raw_docs: List[Document] = []
 
-        # 1. Odczyt raportów Markdown
+        # 1. Odczyt raportów Markdown Big Tech
         path_md = Path(reports_dir)
         if path_md.exists():
             for file_path in sorted(path_md.glob("*.md")):
@@ -119,7 +130,7 @@ class FinancialVectorStore:
                 except Exception as e:
                     print(f"Błąd odczytu pliku {file_path}: {e}")
 
-        # 2. Odczyt i parsowanie sprawozdań PDF (z ekstrakcją tabel do Markdown)
+        # 2. Odczyt i parsowanie sprawozdań PDF
         path_pdf = Path(pdf_dir)
         if path_pdf.exists():
             for file_path in sorted(path_pdf.glob("*.pdf")):
@@ -129,16 +140,68 @@ class FinancialVectorStore:
                 except Exception as e:
                     print(f"Błąd parsowania pliku PDF {file_path}: {e}")
 
-        # 3. Hierarchiczny podział: Child Chunks (wyszukiwanie) i Parent Chunks (kontekst)
+        # 3. Odczyt wielodomenowego repozytorium wiedzy Knowledge Lake
+        path_kb = Path(kb_dir)
+        if path_kb.exists():
+            for file_path in sorted(path_kb.rglob("*.md")):
+                try:
+                    content = file_path.read_text(encoding="utf-8")
+                    domain = file_path.parent.name
+                    raw_docs.append(
+                        Document(
+                            page_content=content,
+                            metadata={
+                                "source": str(file_path),
+                                "filename": file_path.name,
+                                "company": domain.capitalize(),
+                                "domain": domain,
+                                "title": file_path.stem.replace("_", " ").title(),
+                                "is_table": "|" in content,
+                            },
+                        )
+                    )
+                except Exception as e:
+                    print(f"Błąd odczytu z Knowledge Lake {file_path}: {e}")
+
+        # 4. Hierarchiczny podział: Child Chunks i Parent Chunks
         children, parent_store = self.hierarchical_chunker.split_documents(raw_docs)
         self.vector_store.add_documents(children)
         self.parent_docstore = parent_store
         self._is_populated = True
 
-        # 4. Zapisanie do trwałego cache'u na dysku
+        # 5. Zapisanie do trwałego cache'u
         if children:
             self.save_to_disk()
 
+        return len(children)
+
+    def add_markdown_file(self, file_path: Path, domain: str = "general") -> int:
+        """Dynamicznie i przyrostowo indeksuje nowy plik z Knowledge Lake do bazy wektorowej."""
+        file_path = Path(file_path)
+        if not file_path.exists():
+            return 0
+
+        if not self._is_populated:
+            self.load_from_directory()
+
+        content = file_path.read_text(encoding="utf-8")
+        raw_doc = Document(
+            page_content=content,
+            metadata={
+                "source": str(file_path),
+                "filename": file_path.name,
+                "company": domain.capitalize(),
+                "domain": domain,
+                "title": file_path.stem.replace("_", " ").title(),
+                "is_table": "|" in content,
+            },
+        )
+
+        children, parent_store = self.hierarchical_chunker.split_documents([raw_doc])
+        self.vector_store.add_documents(children)
+        self.parent_docstore.update(parent_store)
+        self.save_to_disk()
+        print(f"Pomyślnie zindeksowano przyrostowo: {file_path.name} ({len(children)} chunków)")
         return len(children)
 
     def similarity_search(self, query: str, k: int = 10) -> List[Document]:
@@ -148,7 +211,6 @@ class FinancialVectorStore:
         if not self._is_populated:
             self.load_from_directory()
 
-        # Pobieramy nieco więcej dzieci, aby po deduplikacji rodziców mieć dokładnie k wyników
         child_docs = self.vector_store.similarity_search(query, k=k * 2)
 
         unique_parents: List[Document] = []
@@ -159,35 +221,31 @@ class FinancialVectorStore:
             if parent_id and parent_id in self.parent_docstore:
                 if parent_id not in seen_parent_ids:
                     seen_parent_ids.add(parent_id)
-                    unique_parents.append(self.parent_docstore[parent_id])
+                    parent_doc = self.parent_docstore[parent_id]
+                    unique_parents.append(parent_doc)
             else:
-                # Dokument nieposiadający rodzica (fallback)
-                unique_parents.append(child)
+                if child.page_content not in [p.page_content for p in unique_parents]:
+                    unique_parents.append(child)
 
             if len(unique_parents) >= k:
                 break
 
         return unique_parents
 
-    def get_retriever(self, k: int = 10):
-        """Zwraca interfejs kompatybilny z retrieverem LangChain."""
-        if not self._is_populated:
-            self.load_from_directory()
-        return self.vector_store.as_retriever(search_kwargs={"k": k})
+
+_VECTOR_STORE_INSTANCE: Optional[FinancialVectorStore] = None
 
 
-_global_vector_store: Optional[FinancialVectorStore] = None
+def get_vector_store() -> FinancialVectorStore:
+    """Zwraca instancję singletona bazy wektorowej z automatycznym ładowaniem."""
+    global _VECTOR_STORE_INSTANCE
+    if _VECTOR_STORE_INSTANCE is None:
+        _VECTOR_STORE_INSTANCE = FinancialVectorStore()
+        _VECTOR_STORE_INSTANCE.load_from_directory()
+    return _VECTOR_STORE_INSTANCE
 
 
-def get_vector_store(force_reload: bool = False) -> FinancialVectorStore:
-    """Zwraca globalną instancję bazy wektorowej."""
-    global _global_vector_store
-    if _global_vector_store is None or force_reload:
-        _global_vector_store = FinancialVectorStore()
-        _global_vector_store.load_from_directory(force_reload=force_reload)
-    return _global_vector_store
+def get_retriever() -> FinancialVectorStore:
+    """Zwraca instancję bazy wektorowej do wyszukiwania (kompatybilność wsteczna)."""
+    return get_vector_store()
 
-
-def get_retriever(k: int = 10):
-    """Zwraca skonfigurowany obiekt retrievera."""
-    return get_vector_store().get_retriever(k=k)
