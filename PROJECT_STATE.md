@@ -189,4 +189,11 @@
   7. Bezpośrednie linki do narzędzi (Swagger UI i LangSmith) i pełna interaktywność dokumentów źródłowych: na górnym pasku w miejsce wskaźnika GPU umieszczono bezpośredni odnośnik do interaktywnej dokumentacji OpenAPI/Swagger (`/docs`), zachowano link do projektu w chmurze LangSmith (`smith.langchain.com`), a w interfejsie dodano wielopoziomowe otwieranie treści dokumentów (klikalny tytuł pliku `citeDetailTitleBtn`, przycisk `Cały plik`, chipy cytowań, odnośniki inline `[1]`, `[2]` w treści odpowiedzi oraz modal pełnego podglądu pliku Markdown `docPreviewModal` ze 100% precyzyjnym mapowaniem domen).
 * **Konsekwencje**: Pełna ochrona wiarygodności faktograficznej platformy, natychmiastowy dostęp do telemetrii w LangSmith i dokumentacji Swagger UI oraz możliwość dogłębnej inspekcji źródeł i tabel źródłowych przez analityka bez opuszczania interfejsu.
 
+### ADR-015: Scalenie Gałęzi Wizualnej (ui/workbench-visual-redesign) do Głównej Linii (main)
+* **Data**: 2026-09-02
+* **Kontekst**: Połączenie zaawansowanych usprawnień wizualnych interfejsu (taśma przebiegu pod grafem z segmentami proporcjonalnymi do czasu wykonania i rozróżnieniem chmury vs lokalnego GPU, typografia IBM Plex / Archivo, kaskada cytowań, animacja wycieraczkowa ujawniania odpowiedzi oraz obsługa skrótów klawiaturowych) z kompletnym silnikiem backendowym i telemetrią na gałęzi `main`.
+* **Decyzja**: Scalenie gałęzi `ui/workbench-visual-redesign` (commit `1c005cd`) do `main` w trybie fast-forward.
+* **Konsekwencje**: Główna linia projektu `main` posiada zunifikowany, dopracowany wizualnie i w 100% sprawny technicznie interfejs badawczy AI Engineering / LLMOps Lab.
+
+
 
