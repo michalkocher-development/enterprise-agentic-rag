@@ -14,7 +14,7 @@ def test_gradio_blocks_initialization():
 def test_hardware_badge_detection():
     """Weryfikuje detekcję sprzętu (GPU RTX 2050 lub fallback na CPU)."""
     badge = get_system_hardware_badge()
-    assert "GPU Aktywne" in badge or "Tryb CPU" in badge
+    assert "GPU:" in badge or "CPU:" in badge
 
 
 def test_stream_agentic_generator_empty_input():
@@ -22,7 +22,16 @@ def test_stream_agentic_generator_empty_input():
     history = []
     generator = stream_agentic_rag("", history)
     result = next(generator)
-    
-    assert len(result) == 3
-    updated_history, status, sources = result
-    assert "Wpisz zapytanie" in status
+    assert result == history
+
+
+def test_stream_agentic_generator_starts_reasoning():
+    """Weryfikuje, czy generator tworzy krok myślenia agenta w akordeonie."""
+    history = []
+    generator = stream_agentic_rag("Test query", history)
+    result = next(generator)
+    assert len(result) == 2
+    assert result[0]["role"] == "user"
+    assert result[1]["role"] == "assistant"
+    assert "<details" in result[1]["content"]
+
