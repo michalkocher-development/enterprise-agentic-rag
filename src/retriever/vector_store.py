@@ -107,6 +107,8 @@ class FinancialVectorStore:
                         self.add_markdown_file(mf, domain=mf.parent.name)
             return -1
 
+        self.vector_store = InMemoryVectorStore(self.embeddings)
+        self.parent_docstore = {}
         raw_docs: List[Document] = []
 
         # 1. Odczyt raportów Markdown Big Tech

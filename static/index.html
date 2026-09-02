@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enterprise Agentic RAG — AI Engineering & LLMOps Workbench</title>
+    <title>Enterprise Agentic RAG — AI Engineering Lab</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -12,12 +12,20 @@
             theme: {
                 extend: {
                     colors: {
-                        darkBg: '#080c15',
-                        darkSidebar: '#0d1527',
-                        darkCard: '#131e35',
-                        darkBorder: '#1e2d4a',
-                        accentBlue: '#3b82f6',
-                        accentIndigo: '#6366f1',
+                        blackPrimary: '#000000',
+                        blackSurface: '#080808',
+                        blackElevated: '#0f0f0f',
+                        blackHover: '#171717',
+                        borderSubtle: '#1e1e1e',
+                        borderMedium: '#2a2a2a',
+                        textPrimary: '#f5f5f7',
+                        textSecondary: '#a1a1aa',
+                        textMuted: '#71717a',
+                        accentDot: '#ffffff',
+                    },
+                    fontFamily: {
+                        sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Display"', '"Segoe UI"', 'Roboto', 'Inter', 'sans-serif'],
+                        mono: ['"SF Mono"', '"JetBrains Mono"', 'Menlo', 'Consolas', 'monospace'],
                     }
                 }
             }
@@ -28,381 +36,409 @@
     <!-- Marked.js for Markdown -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
-        ::-webkit-scrollbar { width: 5px; height: 5px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.4); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 0.6); }
+        body {
+            background-color: #000000;
+            color: #f5f5f7;
+            letter-spacing: -0.01em;
+        }
 
-        /* Markdown Styling */
-        .prose table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.84rem; }
-        .prose th, .prose td { border: 1px solid rgba(148, 163, 184, 0.25); padding: 7px 12px; }
-        .prose th { background: rgba(148, 163, 184, 0.12); font-weight: 600; text-align: left; }
-        .prose tr:nth-child(even) { background: rgba(148, 163, 184, 0.04); }
-        .prose ul { list-style-type: disc; padding-left: 20px; margin: 8px 0; }
-        .prose strong { color: #60a5fa; font-weight: 600; }
-        .prose p { margin-bottom: 8px; line-height: 1.6; }
+        /* Antigravity Minimalist Scrollbars */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #262626; border-radius: 2px; }
+        ::-webkit-scrollbar-thumb:hover { background: #404040; }
+
+        /* Delicate animations */
+        @keyframes fadeInSlide {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .anim-fade-in {
+            animation: fadeInSlide 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* Markdown Typography */
+        .prose { color: #d4d4d8; font-size: 0.8125rem; line-height: 1.65; }
+        .prose table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 0.78rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+        .prose th, .prose td { border: 1px solid #262626; padding: 6px 12px; }
+        .prose th { background: #0f0f0f; color: #f5f5f7; font-weight: 500; text-align: left; }
+        .prose tr:nth-child(even) { background: #080808; }
+        .prose strong { color: #ffffff; font-weight: 600; }
+        .prose p { margin-bottom: 10px; }
+        .prose ul { list-style: square; padding-left: 18px; margin: 8px 0; }
+        .prose code { background: #141414; border: 1px solid #262626; padding: 2px 5px; border-radius: 4px; font-size: 0.75rem; font-family: ui-monospace, monospace; }
+
+        /* Subtle hairline focus glow */
+        .glow-hairline:focus-within {
+            border-color: #52525b;
+            box-shadow: 0 0 0 1px #52525b, 0 10px 30px -10px rgba(0,0,0,0.8);
+        }
+
+        .active-tab {
+            border-bottom: 2px solid #ffffff !important;
+            color: #ffffff !important;
+        }
     </style>
 </head>
-<body class="bg-gray-100 dark:bg-darkBg text-gray-900 dark:text-gray-100 min-h-screen flex flex-col font-sans transition-colors duration-200">
+<body class="min-h-screen flex flex-col font-sans bg-black text-textPrimary antialiased selection:bg-neutral-800 selection:text-white">
 
-    <!-- Top Navigation Bar -->
-    <header class="border-b border-gray-200 dark:border-darkBorder bg-white/90 dark:bg-darkSidebar/90 backdrop-blur-md sticky top-0 z-50">
-        <div class="max-w-[1700px] mx-auto px-4 py-2.5 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md">
-                    <i data-lucide="cpu" class="w-4 h-4"></i>
+    <!-- Top Navigation Bar (Antigravity Precision Bar) -->
+    <header class="border-b border-borderSubtle bg-black/80 backdrop-blur-xl sticky top-0 z-50">
+        <div class="max-w-[1740px] mx-auto px-5 py-3 flex items-center justify-between">
+            
+            <!-- Brand -->
+            <div class="flex items-center space-x-3.5">
+                <div class="w-7 h-7 rounded-md border border-neutral-700 bg-neutral-900 flex items-center justify-center text-white">
+                    <i data-lucide="cpu" class="w-3.5 h-3.5 text-neutral-300" stroke-width="1.75"></i>
                 </div>
                 <div>
                     <div class="flex items-center gap-2">
-                        <span class="text-sm font-bold tracking-tight text-gray-900 dark:text-white">Enterprise Agentic RAG</span>
-                        <span class="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-900/60 dark:text-blue-300">LLMOps Lab</span>
+                        <span class="text-xs font-semibold tracking-tight text-white uppercase tracking-wider">Antigravity RAG</span>
+                        <span class="text-[9px] font-mono px-1.5 py-0.2 rounded border border-neutral-800 bg-neutral-950 text-neutral-400">LAB // CORE</span>
                     </div>
-                    <p class="text-[11px] text-gray-500 dark:text-gray-400">LangGraph State Machine • PyTorch CUDA FP16 • Multi-Domain OCR Lake</p>
+                    <p class="text-[10px] text-neutral-500 font-mono tracking-tight">LangGraph State Machine • PyTorch CUDA FP16 • Knowledge Lake</p>
                 </div>
             </div>
 
-            <!-- Header Telemetry & Quick Links -->
-            <div class="flex items-center space-x-2 text-xs">
-                <div id="gpuBadge" class="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gray-100 dark:bg-darkCard border border-gray-200 dark:border-darkBorder text-gray-700 dark:text-gray-300">
-                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span id="gpuText" class="font-mono text-[11px]">NVIDIA RTX 2050 (FP16)</span>
+            <!-- Header Actions & Telemetry -->
+            <div class="flex items-center space-x-2 text-xs font-mono">
+                
+                <!-- Hardware Badge -->
+                <div id="gpuBadge" class="flex items-center gap-2 px-2.5 py-1 rounded-md border border-borderSubtle bg-blackSurface text-neutral-400 text-[11px]">
+                    <span class="w-1.5 h-1.5 rounded-full bg-neutral-200"></span>
+                    <span id="gpuText">NVIDIA RTX 2050 [FP16]</span>
                 </div>
 
-                <!-- LangSmith Live Link -->
-                <a href="https://smith.langchain.com/o/default/projects/p/ai-engineering-lab" target="_blank" class="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 hover:bg-emerald-100 border border-emerald-200 dark:border-emerald-800/60 transition-colors shadow-sm font-medium">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                    <i data-lucide="activity" class="w-3.5 h-3.5"></i>
-                    <span>LangSmith Tracing</span>
-                </a>
-
-                <!-- Knowledge Lake Documents Browser Button -->
-                <button id="openDocsModalBtn" class="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-50 text-blue-700 dark:bg-blue-950/70 dark:text-blue-300 hover:bg-blue-100 border border-blue-200 dark:border-blue-800/60 transition-colors shadow-sm font-medium">
-                    <i data-lucide="folder-kanban" class="w-3.5 h-3.5"></i>
-                    <span>Baza Dokumentów</span>
-                    <span id="docsHeaderBadge" class="ml-1 px-1.5 py-0.2 rounded-full bg-blue-600 text-white text-[10px] font-bold">...</span>
+                <!-- Knowledge Lake Explorer Trigger -->
+                <button id="openDocsModalBtn" class="flex items-center gap-1.5 px-3 py-1 rounded-md border border-borderSubtle bg-blackSurface hover:bg-blackHover hover:border-neutral-600 text-neutral-300 transition-all text-[11px]">
+                    <i data-lucide="database" class="w-3.5 h-3.5 text-neutral-400" stroke-width="1.5"></i>
+                    <span>Baza Wiedzy</span>
+                    <span id="docsHeaderBadge" class="ml-1 px-1.5 py-0.2 rounded bg-neutral-900 border border-neutral-800 text-[10px] text-neutral-300">0</span>
                 </button>
 
-                <a href="/docs" target="_blank" class="flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 hover:bg-indigo-100 border border-indigo-200 dark:border-indigo-800/60 transition-colors">
-                    <i data-lucide="terminal" class="w-3.5 h-3.5"></i>
-                    <span>Swagger API</span>
+                <!-- LangSmith Direct Trace -->
+                <a href="https://smith.langchain.com/o/47aa0bd9-0fd1-4a6c-86e4-7e5512e837bd/projects/p/dec5f29b-3875-4306-a622-b8da0d9a6aae" target="_blank" class="flex items-center gap-1.5 px-3 py-1 rounded-md border border-borderSubtle bg-blackSurface hover:bg-blackHover hover:border-neutral-600 text-neutral-300 transition-all text-[11px]">
+                    <i data-lucide="activity" class="w-3.5 h-3.5 text-neutral-400" stroke-width="1.5"></i>
+                    <span>LangSmith</span>
                 </a>
 
-                <button id="uploadModalBtn" class="flex items-center gap-1 px-2.5 py-1 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors shadow-sm">
-                    <i data-lucide="file-up" class="w-3.5 h-3.5"></i>
-                    <span>Wgraj dokument / OCR</span>
-                </button>
+                <!-- Swagger API Documentation -->
+                <a href="/docs" target="_blank" class="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-borderSubtle bg-blackSurface hover:bg-blackHover text-neutral-400 hover:text-neutral-200 transition-all text-[11px]">
+                    <i data-lucide="terminal" class="w-3.5 h-3.5" stroke-width="1.5"></i>
+                    <span>API</span>
+                </a>
 
-                <button id="themeToggle" class="p-1.5 rounded-md text-gray-500 hover:bg-gray-100 dark:hover:bg-darkCard transition-colors">
-                    <i data-lucide="sun" class="w-4 h-4 hidden dark:block"></i>
-                    <i data-lucide="moon" class="w-4 h-4 block dark:hidden"></i>
+                <!-- Ingest & OCR Upload Button -->
+                <button id="uploadModalBtn" class="flex items-center gap-1.5 px-3 py-1 rounded-md bg-white text-black hover:bg-neutral-200 transition-all font-sans font-medium text-[11px] ml-1">
+                    <i data-lucide="upload" class="w-3.5 h-3.5 text-black" stroke-width="1.75"></i>
+                    <span>Wgraj dokument</span>
                 </button>
             </div>
         </div>
     </header>
 
-    <!-- Main Workspace: 2-Column Split Workbench -->
-    <main class="flex-1 max-w-[1700px] w-full mx-auto p-3 flex gap-3 overflow-hidden">
+    <!-- Main Workspace (Split Grid) -->
+    <main class="flex-1 max-w-[1740px] w-full mx-auto p-4 flex gap-4 overflow-hidden">
 
-        <!-- LEWA KOLUMNA: Czat Konwersacyjny (52% szerokości) -->
-        <section class="flex-1 flex flex-col bg-white dark:bg-darkSidebar border border-gray-200 dark:border-darkBorder rounded-xl shadow-sm overflow-hidden min-w-[340px]">
+        <!-- LEWA KOLUMNA: Czat Konwersacyjny (53% szerokości) -->
+        <section class="flex-1 flex flex-col bg-blackSurface border border-borderSubtle rounded-lg overflow-hidden shadow-2xl min-w-[360px]">
             
-            <!-- Chat Header -->
-            <div class="px-4 py-2.5 border-b border-gray-200 dark:border-darkBorder flex items-center justify-between bg-gray-50/70 dark:bg-darkCard/50">
+            <!-- Chat Control Bar -->
+            <div class="px-4 py-2.5 border-b border-borderSubtle flex items-center justify-between bg-black">
                 <div class="flex items-center gap-2 text-xs">
-                    <i data-lucide="messages-square" class="w-4 h-4 text-blue-500"></i>
-                    <span class="font-semibold text-gray-800 dark:text-gray-200">Konwersacja z Pamięcią Wątków</span>
-                    <span id="threadIdBadge" class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400">session-init</span>
+                    <span class="w-1.5 h-1.5 rounded-full bg-neutral-400"></span>
+                    <span class="text-neutral-400 font-mono text-[11px] uppercase tracking-wider">Sesja Konwersacyjna</span>
+                    <span id="threadIdBadge" class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-neutral-900 border border-neutral-800 text-neutral-400">thread-init</span>
                 </div>
-                <button id="clearBtn" title="Resetuj sesję i pamięć wątku" class="text-xs text-gray-400 hover:text-red-400 flex items-center gap-1 transition-colors">
-                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
-                    <span>Nowy wątek</span>
+                <button id="clearBtn" title="Resetuj sesję i pamięć wątku" class="text-neutral-500 hover:text-neutral-200 flex items-center gap-1 text-[11px] font-mono transition-colors">
+                    <i data-lucide="rotate-ccw" class="w-3 h-3" stroke-width="1.5"></i>
+                    <span>Reset</span>
                 </button>
             </div>
 
-            <!-- Messages Stream Area -->
-            <div id="chatContainer" class="flex-1 p-4 overflow-y-auto space-y-4 text-sm">
+            <!-- Stream Conversation Container -->
+            <div id="chatContainer" class="flex-1 p-5 overflow-y-auto space-y-5 text-xs">
                 
-                <!-- Welcome Banner -->
-                <div class="p-4 rounded-xl bg-blue-50/60 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 text-blue-900 dark:text-blue-200 text-xs leading-relaxed">
-                    <div class="flex items-center gap-2 font-bold mb-1">
-                        <i data-lucide="sparkles" class="w-4 h-4 text-blue-500"></i>
-                        Pulpit Analityczny Gotowy
+                <!-- Minimalist Initial State -->
+                <div class="p-4 rounded border border-borderSubtle bg-blackElevated text-neutral-400 leading-relaxed text-[11px]">
+                    <div class="flex items-center gap-2 text-neutral-200 font-medium mb-1 font-mono uppercase text-[10px] tracking-wider">
+                        <i data-lucide="terminal" class="w-3.5 h-3.5 text-neutral-300" stroke-width="1.5"></i>
+                        System Gotowy do Analizy
                     </div>
-                    Wybierz zapytanie testowe lub wpisz własne. Na prawym panelu masz pełny podgląd każdego etapu: od pobrania przez wektory, przez reranking na GPU RTX 2050, aż po werdykty LLM Grader i ewentualne pętle samonaprawcze (Rewrite).
+                    Wybierz zapytanie referencyjne lub wprowadź własne. Prawy inspektor rejestruje każdy węzeł potoku: pobieranie gęste, reranking na GPU RTX 2050, werdykty audytu LLM oraz ewentualne pętle samonaprawcze.
                 </div>
 
             </div>
 
-            <!-- Bottom Input Section -->
-            <div class="p-3 border-t border-gray-200 dark:border-darkBorder bg-gray-50/50 dark:bg-darkCard/30 space-y-2">
+            <!-- Bottom Prompt Console -->
+            <div class="p-3.5 border-t border-borderSubtle bg-black space-y-2.5">
                 
-                <!-- Quick Suggestion Chips (2x2) -->
+                <!-- Minimalist Suggestion Grid -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                    <button class="chip-btn text-left text-[11px] px-2.5 py-1.5 rounded-lg bg-white dark:bg-darkCard border border-gray-200 dark:border-darkBorder hover:border-blue-500 text-gray-700 dark:text-gray-300 transition-colors truncate">
-                        🎓 Jaki był tytuł pracy dyplomowej w dokumencie 009?
+                    <button class="chip-btn text-left text-[11px] px-3 py-2 rounded border border-borderSubtle bg-blackElevated hover:border-neutral-600 hover:bg-blackHover text-neutral-400 hover:text-neutral-200 transition-all truncate font-mono">
+                        Zysk netto (Net Income) NVIDIA w Q3 FY25 z tabeli 10-Q
                     </button>
-                    <button class="chip-btn text-left text-[11px] px-2.5 py-1.5 rounded-lg bg-white dark:bg-darkCard border border-gray-200 dark:border-darkBorder hover:border-blue-500 text-gray-700 dark:text-gray-300 transition-colors truncate">
-                        📊 Zysk netto (Net Income) NVIDIA w Q3 FY25 z tabeli 10-Q
+                    <button class="chip-btn text-left text-[11px] px-3 py-2 rounded border border-borderSubtle bg-blackElevated hover:border-neutral-600 hover:bg-blackHover text-neutral-400 hover:text-neutral-200 transition-all truncate font-mono">
+                        Jakie zakazy systemów AI wprowadza Artykuł 5 EU AI Act?
                     </button>
-                    <button class="chip-btn text-left text-[11px] px-2.5 py-1.5 rounded-lg bg-white dark:bg-darkCard border border-gray-200 dark:border-darkBorder hover:border-blue-500 text-gray-700 dark:text-gray-300 transition-colors truncate">
-                        ⚖️ Jakie zakazy systemów AI wprowadza Artykuł 5 EU AI Act?
+                    <button class="chip-btn text-left text-[11px] px-3 py-2 rounded border border-borderSubtle bg-blackElevated hover:border-neutral-600 hover:bg-blackHover text-neutral-400 hover:text-neutral-200 transition-all truncate font-mono">
+                        Porównaj przychody z chmury AWS i Google Cloud w 2024
                     </button>
-                    <button class="chip-btn text-left text-[11px] px-2.5 py-1.5 rounded-lg bg-white dark:bg-darkCard border border-gray-200 dark:border-darkBorder hover:border-blue-500 text-gray-700 dark:text-gray-300 transition-colors truncate">
-                        ☁️ Porównaj przychody z chmury AWS i Google Cloud w 2024
+                    <button class="chip-btn text-left text-[11px] px-3 py-2 rounded border border-borderSubtle bg-blackElevated hover:border-neutral-600 hover:bg-blackHover text-neutral-400 hover:text-neutral-200 transition-all truncate font-mono">
+                        Wymień główne czynniki ryzyka w raporcie rocznym Alphabet
                     </button>
                 </div>
 
-                <!-- Input Field -->
-                <form id="chatForm" class="flex gap-2 items-end">
+                <!-- Input Console -->
+                <form id="chatForm" class="flex gap-2 items-end glow-hairline rounded-lg bg-blackElevated border border-borderSubtle p-1 transition-all">
                     <textarea 
                         id="queryInput" 
                         rows="1" 
-                        placeholder="Zadaj pytanie lub dopytaj o szczegóły (Enter = wyślij, Shift+Enter = nowa linia)..." 
-                        class="flex-1 px-3 py-2 text-xs rounded-xl bg-white dark:bg-darkCard border border-gray-300 dark:border-darkBorder focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white resize-none max-h-28"
+                        placeholder="Wprowadź zapytanie analityczne (Enter = wyślij, Shift+Enter = nowa linia)..." 
+                        class="flex-1 px-3 py-2 text-xs bg-transparent border-none text-white focus:outline-none resize-none max-h-32 placeholder:text-neutral-600 font-sans"
                     ></textarea>
-                    <button type="submit" id="sendBtn" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow transition-colors flex items-center gap-1 disabled:opacity-50">
-                        <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                    <button type="submit" id="sendBtn" class="px-4 py-2 bg-white hover:bg-neutral-200 text-black rounded-md text-xs font-medium transition-all flex items-center gap-1.5 flex-shrink-0 disabled:opacity-40">
                         <span>Wyślij</span>
+                        <i data-lucide="arrow-up-right" class="w-3.5 h-3.5" stroke-width="2"></i>
                     </button>
                 </form>
             </div>
         </section>
 
-        <!-- PRAWA KOLUMNA: Live LLMOps & Multi-Stage Inspector (48% szerokości) -->
-        <aside class="w-[48%] flex flex-col bg-white dark:bg-darkSidebar border border-gray-200 dark:border-darkBorder rounded-xl shadow-sm overflow-hidden hidden md:flex">
+        <!-- PRAWA KOLUMNA: Inspektor Grafu i LLMOps (47% szerokości) -->
+        <aside class="w-[47%] flex flex-col bg-blackSurface border border-borderSubtle rounded-lg overflow-hidden shadow-2xl hidden md:flex">
             
-            <!-- Telemetry Header -->
-            <div class="px-4 py-2.5 border-b border-gray-200 dark:border-darkBorder flex items-center justify-between bg-gray-50/70 dark:bg-darkCard/50">
-                <div class="flex items-center gap-2 text-xs">
-                    <span id="statusIndicator" class="w-2.5 h-2.5 rounded-full bg-gray-400"></span>
-                    <span class="font-bold text-gray-800 dark:text-gray-200 uppercase tracking-wider text-[10px]">Inspektor Grafu & LLMOps</span>
+            <!-- Inspector Header -->
+            <div class="px-4 py-2.5 border-b border-borderSubtle flex items-center justify-between bg-black">
+                <div class="flex items-center gap-2">
+                    <span id="statusIndicator" class="w-1.5 h-1.5 rounded-full bg-neutral-600"></span>
+                    <span class="font-mono text-[10px] text-neutral-400 uppercase tracking-widest">Telemetria Grafu</span>
                 </div>
-                <div class="flex items-center gap-3 font-mono text-[11px] text-gray-500 dark:text-gray-400">
-                    <div>⏱️ Latencja: <span id="totalLatencyText" class="text-blue-500 font-bold">0.00s</span></div>
-                    <div>💾 VRAM: <span id="vramText" class="text-emerald-500 font-bold">0 MB</span></div>
+                <div class="flex items-center gap-4 font-mono text-[11px] text-neutral-500">
+                    <div>LATENCY: <span id="totalLatencyText" class="text-neutral-200 font-medium">0.00s</span></div>
+                    <div>VRAM: <span id="vramText" class="text-neutral-200 font-medium">0 MB</span></div>
                 </div>
             </div>
 
-            <!-- Pipeline Visual Flow -->
-            <div class="p-3 border-b border-gray-200 dark:border-darkBorder bg-gray-50/30 dark:bg-darkCard/20">
+            <!-- Pipeline Live Step Bar -->
+            <div class="p-3.5 border-b border-borderSubtle bg-blackElevated/60">
                 <div class="flex items-center justify-between mb-2">
-                    <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Przepływ Węzłów LangGraph (Na Żywo)</span>
-                    <span id="loopBadge" class="hidden text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-900/60 text-amber-300 border border-amber-700 animate-pulse">🔄 PĘTLA SAMONAPRAWCZA (REWRITE)</span>
+                    <span class="text-[10px] font-mono uppercase tracking-widest text-neutral-500">Przebieg Węzłów Stanu</span>
+                    <span id="loopBadge" class="hidden text-[9px] font-mono px-2 py-0.5 rounded border border-amber-800/80 bg-amber-950/40 text-amber-300">PĘTLA AUTOKOREKTY [REWRITE]</span>
                 </div>
                 <div id="nodesFlowBar" class="grid grid-cols-6 gap-1 text-center font-mono text-[10px]">
-                    <div id="node-router" class="p-1 rounded-md border border-gray-200 dark:border-darkBorder bg-gray-100 dark:bg-darkCard text-gray-400 transition-all">
-                        <div>🔀 Router</div>
-                        <div class="text-[9px] latency text-gray-400 mt-0.5">-</div>
+                    <div id="node-router" class="p-1.5 rounded border border-borderSubtle bg-black text-neutral-500 transition-all">
+                        <div>Router</div>
+                        <div class="text-[9px] latency text-neutral-600 mt-0.5">-</div>
                     </div>
-                    <div id="node-retrieve" class="p-1 rounded-md border border-gray-200 dark:border-darkBorder bg-gray-100 dark:bg-darkCard text-gray-400 transition-all">
-                        <div>🔍 Retrieve</div>
-                        <div class="text-[9px] latency text-gray-400 mt-0.5">-</div>
+                    <div id="node-retrieve" class="p-1.5 rounded border border-borderSubtle bg-black text-neutral-500 transition-all">
+                        <div>Retrieve</div>
+                        <div class="text-[9px] latency text-neutral-600 mt-0.5">-</div>
                     </div>
-                    <div id="node-local_rerank" class="p-1 rounded-md border border-gray-200 dark:border-darkBorder bg-gray-100 dark:bg-darkCard text-gray-400 transition-all">
-                        <div>⚡ Rerank</div>
-                        <div class="text-[9px] latency text-gray-400 mt-0.5">-</div>
+                    <div id="node-local_rerank" class="p-1.5 rounded border border-borderSubtle bg-black text-neutral-500 transition-all">
+                        <div>Rerank</div>
+                        <div class="text-[9px] latency text-neutral-600 mt-0.5">-</div>
                     </div>
-                    <div id="node-grade_documents" class="p-1 rounded-md border border-gray-200 dark:border-darkBorder bg-gray-100 dark:bg-darkCard text-gray-400 transition-all">
-                        <div>🤖 Grader</div>
-                        <div class="text-[9px] latency text-gray-400 mt-0.5">-</div>
+                    <div id="node-grade_documents" class="p-1.5 rounded border border-borderSubtle bg-black text-neutral-500 transition-all">
+                        <div>Grader</div>
+                        <div class="text-[9px] latency text-neutral-600 mt-0.5">-</div>
                     </div>
-                    <div id="node-generate" class="p-1 rounded-md border border-gray-200 dark:border-darkBorder bg-gray-100 dark:bg-darkCard text-gray-400 transition-all">
-                        <div>✍️ Generate</div>
-                        <div class="text-[9px] latency text-gray-400 mt-0.5">-</div>
+                    <div id="node-generate" class="p-1.5 rounded border border-borderSubtle bg-black text-neutral-500 transition-all">
+                        <div>Generate</div>
+                        <div class="text-[9px] latency text-neutral-600 mt-0.5">-</div>
                     </div>
-                    <div id="node-hallucination_check" class="p-1 rounded-md border border-gray-200 dark:border-darkBorder bg-gray-100 dark:bg-darkCard text-gray-400 transition-all">
-                        <div>🛡️ Guard</div>
-                        <div class="text-[9px] latency text-gray-400 mt-0.5">-</div>
+                    <div id="node-hallucination_check" class="p-1.5 rounded border border-borderSubtle bg-black text-neutral-500 transition-all">
+                        <div>Guard</div>
+                        <div class="text-[9px] latency text-neutral-600 mt-0.5">-</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Multi-Stage Navigation Tabs -->
-            <div class="flex border-b border-gray-200 dark:border-darkBorder text-[11px] bg-gray-50/50 dark:bg-darkCard/40 overflow-x-auto">
-                <button class="tab-btn active px-3 py-2 font-semibold border-b-2 border-blue-500 text-blue-600 dark:text-blue-400 flex-shrink-0" data-tab="tab-retriever">
-                    🔍 1. Wyszukiwanie (<span id="retrieverCount">0</span>)
+            <!-- Minimalist Navigation Tabs -->
+            <div class="flex border-b border-borderSubtle text-[11px] font-mono bg-black overflow-x-auto">
+                <button class="tab-btn active px-3.5 py-2.5 font-medium border-b-2 border-white text-white flex-shrink-0 transition-all" data-tab="tab-retriever">
+                    1. RETRIEVER (<span id="retrieverCount">0</span>)
                 </button>
-                <button class="tab-btn px-3 py-2 font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-700 flex-shrink-0" data-tab="tab-rerank">
-                    ⚡ 2. Reranking GPU (<span id="rerankCount">0</span>)
+                <button class="tab-btn px-3.5 py-2.5 font-medium text-neutral-500 hover:text-neutral-300 flex-shrink-0 transition-all" data-tab="tab-rerank">
+                    2. RERANK (<span id="rerankCount">0</span>)
                 </button>
-                <button class="tab-btn px-3 py-2 font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-700 flex-shrink-0" data-tab="tab-grader">
-                    🤖 3. Werdykty Grader (<span id="graderCount">0</span>)
+                <button class="tab-btn px-3.5 py-2.5 font-medium text-neutral-500 hover:text-neutral-300 flex-shrink-0 transition-all" data-tab="tab-grader">
+                    3. GRADER (<span id="graderCount">0</span>)
                 </button>
-                <button class="tab-btn px-3 py-2 font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-700 flex-shrink-0" data-tab="tab-rewrite">
-                    🔄 4. Autokorekta (<span id="rewriteCount">0</span>)
+                <button class="tab-btn px-3.5 py-2.5 font-medium text-neutral-500 hover:text-neutral-300 flex-shrink-0 transition-all" data-tab="tab-rewrite">
+                    4. AUTOKOREKTA (<span id="rewriteCount">0</span>)
                 </button>
-                <button class="tab-btn px-3 py-2 font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-700 flex-shrink-0" data-tab="tab-preview">
-                    📜 Podgląd Tekstu
+                <button class="tab-btn px-3.5 py-2.5 font-medium text-neutral-500 hover:text-neutral-300 flex-shrink-0 transition-all" data-tab="tab-preview">
+                    PODGLĄD
                 </button>
-                <button class="tab-btn px-3 py-2 font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-700 flex-shrink-0" data-tab="tab-all-docs">
-                    📁 Baza Wiedzy (<span id="allDocsTabCount">0</span>)
+                <button class="tab-btn px-3.5 py-2.5 font-medium text-neutral-500 hover:text-neutral-300 flex-shrink-0 transition-all" data-tab="tab-all-docs">
+                    BAZA WIEDZY (<span id="allDocsTabCount">0</span>)
                 </button>
             </div>
 
-            <!-- Tab Contents Container -->
-            <div class="flex-1 p-3 overflow-y-auto space-y-3 text-xs">
+            <!-- Tab Content Area -->
+            <div class="flex-1 p-3.5 overflow-y-auto space-y-3 text-xs">
                 
-                <!-- TAB 1: 1. Wyszukiwanie (Retriever) -->
+                <!-- TAB 1: Retriever -->
                 <div id="tab-retriever" class="tab-pane space-y-2">
-                    <div class="text-[11px] text-gray-500 flex justify-between">
-                        <span>Początkowe fragmenty zwrócone przez wyszukiwanie gęste (Gemini Embedding):</span>
-                        <span class="font-mono text-blue-400">Dense Parent-Retrieval</span>
+                    <div class="text-[10px] font-mono text-neutral-500 flex justify-between uppercase">
+                        <span>Początkowe kandydaty wektorowe:</span>
+                        <span class="text-neutral-400">Gemini Embeddings</span>
                     </div>
                     <div id="retrieverList" class="space-y-1.5">
-                        <div class="text-center py-10 text-gray-400">Brak danych. Zadaj pytanie.</div>
+                        <div class="text-center py-12 text-neutral-600 font-mono">Brak danych. Wprowadź zapytanie.</div>
                     </div>
                 </div>
 
-                <!-- TAB 2: 2. Reranking GPU -->
+                <!-- TAB 2: Rerank GPU -->
                 <div id="tab-rerank" class="tab-pane hidden space-y-2">
-                    <div class="flex items-center justify-between text-[11px] text-gray-500">
-                        <span>Kandydaci posortowani przez Cross-Encoder na RTX 2050:</span>
-                        <span class="font-mono text-indigo-400">bge-reranker-base (FP16)</span>
+                    <div class="text-[10px] font-mono text-neutral-500 flex justify-between uppercase">
+                        <span>Ocena Cross-Encoder na GPU RTX 2050:</span>
+                        <span class="text-neutral-400">bge-reranker-base</span>
                     </div>
                     <div id="candidatesList" class="space-y-1.5">
-                        <div class="text-center py-10 text-gray-400">Brak danych.</div>
+                        <div class="text-center py-12 text-neutral-600 font-mono">Brak danych rerankingu.</div>
                     </div>
                 </div>
 
-                <!-- TAB 3: 3. Werdykty LLM Grader -->
+                <!-- TAB 3: Grader LLM -->
                 <div id="tab-grader" class="tab-pane hidden space-y-2">
-                    <div class="flex items-center justify-between text-[11px] text-gray-500">
-                        <span>Indywidualna ocena merytoryczna każdego chunku:</span>
-                        <span id="graderSummaryText" class="font-mono text-emerald-400">0 zaakceptowanych</span>
+                    <div class="text-[10px] font-mono text-neutral-500 flex justify-between uppercase">
+                        <span>Audyt merytoryczny każdego fragmentu:</span>
+                        <span id="graderSummaryText" class="text-neutral-300">0 zaakceptowanych</span>
                     </div>
                     <div id="graderVerdictsList" class="space-y-2">
-                        <div class="text-center py-10 text-gray-400">Brak danych z gradera.</div>
+                        <div class="text-center py-12 text-neutral-600 font-mono">Brak danych audytu.</div>
                     </div>
                 </div>
 
-                <!-- TAB 4: 4. Autokorekta (Rewrite Query) -->
+                <!-- TAB 4: Autokorekta / Rewrite Loop -->
                 <div id="tab-rewrite" class="tab-pane hidden space-y-2">
-                    <div class="text-[11px] text-gray-500">Historia przeformułowania pytań po odrzuceniu nieadekwatnych dokumentów:</div>
+                    <div class="text-[10px] font-mono text-neutral-500 uppercase">Rejestr pętli samonaprawczych:</div>
                     <div id="rewriteLogContainer" class="space-y-2">
-                        <div class="text-center py-10 text-gray-400">Brak pętli samonaprawczych. Zapytanie zostało obsłużone bezpośrednio.</div>
+                        <div class="text-center py-12 text-neutral-600 font-mono">Brak pętli samonaprawczych. Zapytanie obsłużone wprost.</div>
                     </div>
                 </div>
 
                 <!-- TAB 5: Podgląd Tekstu / Tabeli -->
                 <div id="tab-preview" class="tab-pane hidden space-y-2">
-                    <div id="previewHeader" class="text-xs font-semibold text-gray-700 dark:text-gray-300 flex items-center justify-between">
-                        <span>Kliknij dowolny fragment w zakładkach po lewej, aby go zbadać.</span>
+                    <div id="previewHeader" class="text-[11px] font-mono text-neutral-400 flex items-center justify-between pb-1 border-b border-borderSubtle">
+                        <span>Wybierz dokument z dowolnej zakładki, aby wyświetlić zawartość.</span>
                     </div>
-                    <div id="previewBody" class="prose dark:prose-invert p-3 rounded-lg bg-gray-50 dark:bg-darkCard border border-gray-200 dark:border-darkBorder text-[11px] leading-relaxed max-h-[480px] overflow-y-auto">
-                        Wybierz dokument z listy kandydatów.
+                    <div id="previewBody" class="prose max-w-none p-3.5 rounded bg-black border border-borderSubtle text-[11px] leading-relaxed max-h-[500px] overflow-y-auto">
+                        Brak wybranego dokumentu.
                     </div>
                 </div>
 
-                <!-- TAB 6: Wszystkie Dokumenty w Knowledge Lake -->
+                <!-- TAB 6: Wszystkie Dokumenty Knowledge Lake -->
                 <div id="tab-all-docs" class="tab-pane hidden space-y-2">
-                    <div class="flex items-center justify-between text-[11px] text-gray-500">
-                        <span>Zindeksowane pliki Markdown w Knowledge Lake:</span>
-                        <button onclick="loadKnowledgeDocuments()" class="text-blue-400 hover:underline flex items-center gap-1 text-[10px]">
-                            <i data-lucide="refresh-cw" class="w-3 h-3"></i> Odśwież
+                    <div class="flex items-center justify-between text-[10px] font-mono text-neutral-500 uppercase">
+                        <span>Zindeksowane dokumenty Knowledge Lake:</span>
+                        <button onclick="loadKnowledgeDocuments()" class="text-neutral-300 hover:text-white flex items-center gap-1 transition-colors">
+                            <i data-lucide="refresh-cw" class="w-3 h-3" stroke-width="1.5"></i>
+                            <span>Odśwież</span>
                         </button>
                     </div>
                     <div id="allDocsList" class="space-y-1.5">
-                        <div class="text-center py-6 text-gray-400">Ładowanie bazy dokumentów...</div>
+                        <div class="text-center py-8 text-neutral-600 font-mono">Ładowanie indeksu...</div>
                     </div>
                 </div>
 
             </div>
 
-            <!-- Footer Status Bar -->
-            <div class="px-3 py-2 border-t border-gray-200 dark:border-darkBorder bg-gray-50 dark:bg-darkCard/50 flex items-center justify-between text-[10px] font-mono text-gray-500">
-                <div>Router: <span id="footerRouter" class="text-blue-400">-</span></div>
-                <div>Self-RAG Guard: <span id="footerGuard" class="text-emerald-400">-</span></div>
+            <!-- Footer Status Console -->
+            <div class="px-4 py-2 border-t border-borderSubtle bg-black flex items-center justify-between text-[10px] font-mono text-neutral-500">
+                <div>ROUTER: <span id="footerRouter" class="text-neutral-300">-</span></div>
+                <div>GUARD: <span id="footerGuard" class="text-neutral-300">-</span></div>
             </div>
 
         </aside>
 
     </main>
 
-    <!-- Upload & OCR Modal -->
-    <div id="uploadModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white dark:bg-darkSidebar border border-gray-200 dark:border-darkBorder rounded-2xl max-w-md w-full p-6 shadow-2xl">
-            <div class="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-darkBorder">
-                <h3 class="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                    <i data-lucide="scan-text" class="w-5 h-5 text-blue-500"></i>
-                    Ingestion Studio & OCR
-                </h3>
-                <button id="closeModalBtn" class="text-gray-400 hover:text-gray-200">
-                    <i data-lucide="x" class="w-5 h-5"></i>
+    <!-- Upload & OCR Modal (Minimalist Precision) -->
+    <div id="uploadModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-blackSurface border border-borderMedium rounded-lg max-w-md w-full p-6 shadow-2xl">
+            <div class="flex items-center justify-between pb-3 border-b border-borderSubtle">
+                <div class="flex items-center gap-2 font-mono text-xs text-white uppercase tracking-wider">
+                    <i data-lucide="upload" class="w-4 h-4 text-neutral-400" stroke-width="1.5"></i>
+                    <span>Ingestia i OCR</span>
+                </div>
+                <button id="closeModalBtn" class="text-neutral-500 hover:text-neutral-200">
+                    <i data-lucide="x" class="w-4 h-4" stroke-width="1.5"></i>
                 </button>
             </div>
 
-            <form id="uploadForm" class="mt-4 space-y-4">
+            <form id="uploadForm" class="mt-5 space-y-4">
                 <div>
-                    <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Domena w Knowledge Lake</label>
-                    <select id="domainSelect" class="w-full text-xs px-3 py-2 rounded-lg bg-gray-50 dark:bg-darkCard border border-gray-200 dark:border-darkBorder text-gray-900 dark:text-white focus:outline-none">
-                        <option value="education">Edukacja i Dokumenty Urzędowe (Suplementy, Dyplomy)</option>
-                        <option value="finance">Finanse (Sprawozdania 10-Q, 10-K, Tabele)</option>
+                    <label class="block text-[11px] font-mono text-neutral-400 uppercase tracking-wider mb-1.5">Domena Knowledge Lake</label>
+                    <select id="domainSelect" class="w-full text-xs px-3 py-2 rounded bg-black border border-borderSubtle text-neutral-200 focus:outline-none focus:border-neutral-500">
+                        <option value="finance">Finanse (Raporty 10-Q, 10-K, Tabele)</option>
                         <option value="legal">Prawo i Regulacje (EU AI Act)</option>
-                        <option value="ai_research">Frontier AI Research (DeepSeek-R1, Whitepapery)</option>
+                        <option value="ai_research">Frontier AI Research (Whitepapery)</option>
                         <option value="general">Ogólne (General)</option>
                     </select>
                 </div>
 
-                <div class="border-2 border-dashed border-gray-300 dark:border-darkBorder rounded-xl p-6 text-center hover:border-blue-500 transition-colors cursor-pointer" onclick="document.getElementById('fileInput').click()">
-                    <i data-lucide="upload-cloud" class="w-8 h-8 mx-auto text-gray-400 mb-2"></i>
-                    <p class="text-xs font-medium text-gray-700 dark:text-gray-300">Wybierz plik PDF, skan (JPG/PNG) lub TXT</p>
-                    <p class="text-[10px] text-gray-400 mt-1">Automatyczny OCR i natychmiastowa wektoryzacja do pamięci</p>
+                <div class="border border-dashed border-borderMedium hover:border-neutral-400 rounded-lg p-7 text-center transition-colors cursor-pointer bg-black/50" onclick="document.getElementById('fileInput').click()">
+                    <i data-lucide="file-text" class="w-6 h-6 mx-auto text-neutral-500 mb-2" stroke-width="1.5"></i>
+                    <p class="text-xs text-neutral-300 font-medium">Wybierz plik PDF, obraz (JPG/PNG) lub TXT</p>
+                    <p class="text-[10px] font-mono text-neutral-500 mt-1">Automatyczny OCR i dynamiczne zasilenie wektorowe</p>
                     <input type="file" id="fileInput" class="hidden" accept=".pdf,.png,.jpg,.jpeg,.txt">
-                    <div id="selectedFileName" class="text-xs font-semibold text-blue-500 mt-2 hidden"></div>
+                    <div id="selectedFileName" class="text-xs font-mono text-neutral-200 mt-2.5 hidden"></div>
                 </div>
 
                 <div id="uploadProgress" class="hidden">
-                    <div class="flex justify-between text-xs text-gray-400 mb-1">
-                        <span>Przetwarzanie OCR i indeksacja...</span>
-                        <span class="animate-pulse">⏳</span>
+                    <div class="flex justify-between text-[10px] font-mono text-neutral-400 mb-1">
+                        <span>Przetwarzanie i wektoryzacja...</span>
+                        <span>[PRACA]</span>
                     </div>
-                    <div class="w-full bg-gray-700 rounded-full h-1.5 overflow-hidden">
-                        <div class="bg-blue-600 h-1.5 rounded-full w-full animate-pulse"></div>
+                    <div class="w-full bg-neutral-900 rounded-full h-1 overflow-hidden">
+                        <div class="bg-white h-1 rounded-full w-full animate-pulse"></div>
                     </div>
                 </div>
 
-                <button type="submit" id="submitUploadBtn" class="w-full py-2 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow transition-colors">
-                    Rozpocznij Ingestię i Wektoryzację 🚀
+                <button type="submit" id="submitUploadBtn" class="w-full py-2.5 px-4 rounded bg-white hover:bg-neutral-200 text-black text-xs font-medium transition-all">
+                    Rozpocznij Ingestię
                 </button>
             </form>
         </div>
     </div>
 
-    <!-- Knowledge Lake Documents Browser Modal -->
-    <div id="documentsModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white dark:bg-darkSidebar border border-gray-200 dark:border-darkBorder rounded-2xl max-w-3xl w-full p-6 shadow-2xl flex flex-col max-h-[85vh]">
-            <div class="flex items-center justify-between pb-3 border-b border-gray-200 dark:border-darkBorder">
-                <div class="flex items-center gap-2">
-                    <i data-lucide="database" class="w-5 h-5 text-blue-500"></i>
+    <!-- Knowledge Lake Documents Modal (Antigravity Explorer) -->
+    <div id="documentsModal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-blackSurface border border-borderMedium rounded-lg max-w-3xl w-full p-6 shadow-2xl flex flex-col max-h-[85vh]">
+            <div class="flex items-center justify-between pb-3 border-b border-borderSubtle">
+                <div class="flex items-center gap-2.5">
+                    <i data-lucide="database" class="w-4 h-4 text-neutral-300" stroke-width="1.5"></i>
                     <div>
-                        <h3 class="text-sm font-bold text-gray-900 dark:text-white">Repozytorium Wiedzy (Knowledge Lake)</h3>
-                        <p class="text-[11px] text-gray-500">Wszystkie dokumenty zindeksowane w pamięci wektorowej platformy</p>
+                        <h3 class="text-xs font-mono uppercase tracking-widest text-white">Eksplorator Bazy Wiedzy</h3>
+                        <p class="text-[10px] font-mono text-neutral-500">Zindeksowane zasoby Markdown w pamięci platformy</p>
                     </div>
                 </div>
-                <button id="closeDocsModalBtn" class="text-gray-400 hover:text-gray-200">
-                    <i data-lucide="x" class="w-5 h-5"></i>
+                <button id="closeDocsModalBtn" class="text-neutral-500 hover:text-neutral-200">
+                    <i data-lucide="x" class="w-4 h-4" stroke-width="1.5"></i>
                 </button>
             </div>
 
-            <!-- Search & Domain Filter Bar -->
-            <div class="py-3 flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 dark:border-darkBorder/60">
-                <div class="flex gap-1 overflow-x-auto text-[11px]" id="docDomainFilters">
-                    <button class="doc-filter-btn active px-2.5 py-1 rounded-md bg-blue-600 text-white font-medium" data-domain="all">Wszystkie</button>
-                    <button class="doc-filter-btn px-2.5 py-1 rounded-md bg-gray-100 dark:bg-darkCard text-gray-400 hover:text-gray-200" data-domain="finance">Finanse</button>
-                    <button class="doc-filter-btn px-2.5 py-1 rounded-md bg-gray-100 dark:bg-darkCard text-gray-400 hover:text-gray-200" data-domain="education">Edukacja / OCR</button>
-                    <button class="doc-filter-btn px-2.5 py-1 rounded-md bg-gray-100 dark:bg-darkCard text-gray-400 hover:text-gray-200" data-domain="legal">Prawo</button>
+            <!-- Filter & Search Bar -->
+            <div class="py-3 flex flex-wrap items-center justify-between gap-2 border-b border-borderSubtle">
+                <div class="flex gap-1 overflow-x-auto text-[11px] font-mono" id="docDomainFilters">
+                    <button class="doc-filter-btn active px-3 py-1 rounded border border-white bg-white text-black font-medium" data-domain="all">Wszystkie</button>
+                    <button class="doc-filter-btn px-3 py-1 rounded border border-borderSubtle bg-black text-neutral-400 hover:text-neutral-200" data-domain="finance">Finanse</button>
+                    <button class="doc-filter-btn px-3 py-1 rounded border border-borderSubtle bg-black text-neutral-400 hover:text-neutral-200" data-domain="legal">Prawo</button>
                 </div>
-                <input type="text" id="docSearchInput" placeholder="Szukaj dokumentu..." class="px-2.5 py-1 rounded-lg bg-gray-50 dark:bg-darkCard border border-gray-200 dark:border-darkBorder text-xs text-gray-900 dark:text-white focus:outline-none w-44">
+                <input type="text" id="docSearchInput" placeholder="Filtruj dokumenty..." class="px-3 py-1 rounded bg-black border border-borderSubtle text-xs text-neutral-200 focus:outline-none focus:border-neutral-500 w-48 font-mono">
             </div>
 
             <!-- Documents List Container -->
             <div id="modalDocsList" class="flex-1 overflow-y-auto py-3 space-y-2 text-xs">
-                <!-- Document Cards rendered by JS -->
+                <!-- Rendered dynamically -->
             </div>
 
-            <div class="pt-3 border-t border-gray-200 dark:border-darkBorder flex items-center justify-between text-[11px] text-gray-500">
-                <span>Łącznie dokumentów w bazie: <b id="modalTotalDocsCount" class="text-blue-400">0</b></span>
-                <span class="font-mono">Wszystkie pliki są zindeksowane i natychmiast dostępne dla agenta</span>
+            <div class="pt-3 border-t border-borderSubtle flex items-center justify-between text-[10px] font-mono text-neutral-500">
+                <span>ŁĄCZNIE: <b id="modalTotalDocsCount" class="text-neutral-200">0</b> DOKUMENTÓW</span>
+                <span>STATUS: ZINDEKSOWANE</span>
             </div>
         </div>
     </div>
@@ -411,32 +447,22 @@
     <script>
         lucide.createIcons();
 
-        // Theme Toggle
-        const themeToggle = document.getElementById('themeToggle');
-        themeToggle.addEventListener('click', () => {
-            document.documentElement.classList.toggle('dark');
-            localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
-        });
-        if (localStorage.getItem('theme') === 'light') {
-            document.documentElement.classList.remove('dark');
-        }
-
-        // Tab Switching
+        // Multi-Stage Tab Switching
         document.querySelectorAll('.tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.tab-btn').forEach(b => {
-                    b.classList.remove('active', 'border-b-2', 'border-blue-500', 'text-blue-600', 'dark:text-blue-400');
-                    b.classList.add('text-gray-500', 'dark:text-gray-400');
+                    b.classList.remove('active', 'border-b-2', 'border-white', 'text-white');
+                    b.classList.add('text-neutral-500');
                 });
                 document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('hidden'));
 
-                btn.classList.add('active', 'border-b-2', 'border-blue-500', 'text-blue-600', 'dark:text-blue-400');
-                btn.classList.remove('text-gray-500', 'dark:text-gray-400');
+                btn.classList.add('active', 'border-b-2', 'border-white', 'text-white');
+                btn.classList.remove('text-neutral-500');
                 document.getElementById(btn.dataset.tab).classList.remove('hidden');
             });
         });
 
-        // State variables
+        // Thread and Session Management
         let currentThreadId = 'session-' + Math.random().toString(36).substring(2, 9);
         document.getElementById('threadIdBadge').textContent = currentThreadId;
 
@@ -445,13 +471,13 @@
         const chatForm = document.getElementById('chatForm');
         const statusIndicator = document.getElementById('statusIndicator');
 
-        // Fetch Diagnostics & Health
+        // Health & Diagnostics
         async function checkHealth() {
             try {
                 const res = await fetch('/api/v1/health');
                 const data = await res.json();
                 if (data.device === 'cuda') {
-                    document.getElementById('gpuText').textContent = `${data.gpu_name || 'RTX 2050'} (${data.vram_allocated_mb || 0} MB)`;
+                    document.getElementById('gpuText').textContent = `${data.gpu_name || 'RTX 2050'} [${data.vram_allocated_mb || 0} MB]`;
                 }
             } catch (e) {
                 console.error("Healthcheck error:", e);
@@ -459,7 +485,7 @@
         }
         checkHealth();
 
-        // Suggestion Chips Click
+        // Quick Suggestion Chips
         document.querySelectorAll('.chip-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 queryInput.value = btn.textContent.trim();
@@ -467,13 +493,13 @@
             });
         });
 
-        // Reset Conversation
+        // Reset Conversation Session
         document.getElementById('clearBtn').addEventListener('click', () => {
             currentThreadId = 'session-' + Math.random().toString(36).substring(2, 9);
             document.getElementById('threadIdBadge').textContent = currentThreadId;
             chatContainer.innerHTML = `
-                <div class="p-3 rounded-lg bg-gray-50 dark:bg-darkCard border border-gray-200 dark:border-darkBorder text-xs text-gray-500 text-center">
-                    Wątek konwersacji zresetowany. Nowe ID sesji: <b>${currentThreadId}</b>.
+                <div class="p-3 rounded border border-borderSubtle bg-black text-[11px] font-mono text-neutral-500 text-center">
+                    Wątek zresetowany. Nowy identyfikator: ${currentThreadId}
                 </div>
             `;
             resetPanels();
@@ -483,15 +509,15 @@
             ['router', 'retrieve', 'local_rerank', 'grade_documents', 'generate', 'hallucination_check'].forEach(id => {
                 const el = document.getElementById(`node-${id}`);
                 if (el) {
-                    el.className = 'p-1 rounded-md border border-gray-200 dark:border-darkBorder bg-gray-100 dark:bg-darkCard text-gray-400 transition-all';
+                    el.className = 'p-1.5 rounded border border-borderSubtle bg-black text-neutral-500 transition-all';
                     el.querySelector('.latency').textContent = '-';
                 }
             });
             document.getElementById('loopBadge').classList.add('hidden');
-            document.getElementById('retrieverList').innerHTML = '<div class="text-center py-10 text-gray-400">Brak danych.</div>';
-            document.getElementById('candidatesList').innerHTML = '<div class="text-center py-10 text-gray-400">Brak danych.</div>';
-            document.getElementById('graderVerdictsList').innerHTML = '<div class="text-center py-10 text-gray-400">Brak danych.</div>';
-            document.getElementById('rewriteLogContainer').innerHTML = '<div class="text-center py-10 text-gray-400">Brak pętli samonaprawczych.</div>';
+            document.getElementById('retrieverList').innerHTML = '<div class="text-center py-12 text-neutral-600 font-mono">Brak danych.</div>';
+            document.getElementById('candidatesList').innerHTML = '<div class="text-center py-12 text-neutral-600 font-mono">Brak danych.</div>';
+            document.getElementById('graderVerdictsList').innerHTML = '<div class="text-center py-12 text-neutral-600 font-mono">Brak danych.</div>';
+            document.getElementById('rewriteLogContainer').innerHTML = '<div class="text-center py-12 text-neutral-600 font-mono">Brak pętli samonaprawczych.</div>';
             document.getElementById('retrieverCount').textContent = '0';
             document.getElementById('rerankCount').textContent = '0';
             document.getElementById('graderCount').textContent = '0';
@@ -502,11 +528,11 @@
             const el = document.getElementById(`node-${nodeId}`);
             if (!el) return;
 
-            el.className = 'p-1 rounded-md border border-emerald-500/80 bg-emerald-500/10 text-emerald-400 font-semibold';
+            el.className = 'p-1.5 rounded border border-white/60 bg-neutral-900 text-white font-medium shadow-sm transition-all';
             el.querySelector('.latency').textContent = `${latencyMs}ms`;
         }
 
-        // SSE Streaming Handler
+        // SSE Streaming Engine
         chatForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const question = queryInput.value.trim();
@@ -519,7 +545,7 @@
             appendAssistantPlaceholder(assistantMsgId);
 
             resetPanels();
-            statusIndicator.className = 'w-2.5 h-2.5 rounded-full bg-blue-500 animate-ping';
+            statusIndicator.className = 'w-1.5 h-1.5 rounded-full bg-white animate-pulse';
 
             try {
                 const response = await fetch('/api/v1/chat/stream', {
@@ -538,7 +564,7 @@
 
                     buffer += decoder.decode(value, { stream: true });
                     const lines = buffer.split('\n\n');
-                    buffer = lines.pop(); // uncompleted chunk
+                    buffer = lines.pop();
 
                     for (const line of lines) {
                         if (!line.trim()) continue;
@@ -552,7 +578,7 @@
                             if (eventType === 'step') {
                                 handleStepEvent(assistantMsgId, eventData);
                             } else if (eventType === 'complete') {
-                                statusIndicator.className = 'w-2.5 h-2.5 rounded-full bg-emerald-500';
+                                statusIndicator.className = 'w-1.5 h-1.5 rounded-full bg-neutral-400';
                                 document.getElementById('totalLatencyText').textContent = `${(eventData.total_time_ms / 1000).toFixed(2)}s`;
                             }
                         }
@@ -560,8 +586,8 @@
                 }
             } catch (err) {
                 console.error("Stream error:", err);
-                statusIndicator.className = 'w-2.5 h-2.5 rounded-full bg-red-500';
-                document.getElementById(`${assistantMsgId}-content`).innerHTML = `<span class="text-red-400">Błąd połączenia: ${err.message}</span>`;
+                statusIndicator.className = 'w-1.5 h-1.5 rounded-full bg-red-500';
+                document.getElementById(`${assistantMsgId}-content`).innerHTML = `<span class="text-red-400 font-mono text-xs">Błąd komunikacji: ${err.message}</span>`;
             }
         });
 
@@ -573,22 +599,22 @@
                 document.getElementById('vramText').textContent = `${data.vram_mb} MB`;
             }
 
-            // 1. Router Step
+            // Router Step
             if (node === 'router') {
-                document.getElementById('footerRouter').textContent = `${data.route?.toUpperCase()} (${data.route === 'direct_answer' ? 'Pamięć' : 'RAG'})`;
+                document.getElementById('footerRouter').textContent = `${data.route?.toUpperCase()} [${data.route === 'direct_answer' ? 'PAMIĘĆ' : 'RAG'}]`;
             }
 
-            // 2. Retrieve Step (Dense)
+            // Retrieve Step
             if (node === 'retrieve' && data.candidates) {
                 renderRetrieverCandidates(data.candidates);
             }
 
-            // 3. Local Rerank Step (PyTorch GPU)
+            // Local Rerank Step
             if (node === 'local_rerank' && data.ranked_candidates) {
                 renderRerankCandidates(data.ranked_candidates);
             }
 
-            // 4. Grade Documents Step
+            // Grade Documents Step
             if (node === 'grade_documents') {
                 if (data.graded_verdicts) {
                     renderGraderVerdicts(data.graded_verdicts);
@@ -598,36 +624,35 @@
                 }
             }
 
-            // 5. Rewrite Query Step (Self-Correction Loop)
+            // Rewrite Step
             if (node === 'rewrite_query' && data.rewrite_info) {
                 renderRewriteInfo(data.rewrite_info);
             }
 
-            // 6. Generate Step (Answer content)
+            // Generate Step
             if (node === 'generate' && data.generation) {
                 const contentEl = document.getElementById(`${msgId}-content`);
                 contentEl.innerHTML = marked.parse(data.generation);
 
-                // Render Citations Badges
                 if (data.citations && data.citations.length > 0) {
                     const citContainer = document.getElementById(`${msgId}-citations`);
                     citContainer.classList.remove('hidden');
-                    citContainer.innerHTML = '<span class="text-[11px] font-semibold text-gray-500 mr-1">Cytowania:</span>';
+                    citContainer.innerHTML = '<span class="text-[10px] font-mono uppercase text-neutral-500 mr-2">ŹRÓDŁA:</span>';
                     data.citations.forEach((c, idx) => {
                         const badge = document.createElement('span');
-                        badge.className = 'inline-flex items-center gap-1 px-2 py-0.5 rounded bg-gray-100 dark:bg-darkCard border border-gray-200 dark:border-darkBorder text-[10px] text-blue-500 font-mono cursor-pointer hover:border-blue-500 transition-colors';
-                        badge.innerHTML = `<span>#${idx+1} ${c.filename}</span> ${c.is_table ? '<span class="text-[9px] px-1 rounded bg-amber-900/60 text-amber-300 font-bold">TABELA</span>' : ''}`;
+                        badge.className = 'inline-flex items-center gap-1.5 px-2 py-0.5 rounded border border-borderSubtle bg-black text-[10px] font-mono text-neutral-300 cursor-pointer hover:border-neutral-500 transition-colors';
+                        badge.innerHTML = `<span>[${idx+1}] ${c.filename}</span> ${c.is_table ? '<span class="text-[9px] text-neutral-400">[TABELA]</span>' : ''}`;
                         badge.onclick = () => showPreview(c.filename, c.full_text || c.snippet);
                         citContainer.appendChild(badge);
                     });
                 }
             }
 
-            // 7. Hallucination Check Step
+            // Hallucination Check Step
             if (node === 'hallucination_check') {
                 const hGrade = data.hallucination_grade || 'grounded';
                 const aGrade = data.answer_grade || 'useful';
-                document.getElementById('footerGuard').textContent = `${hGrade.toUpperCase()} • ${aGrade.toUpperCase()}`;
+                document.getElementById('footerGuard').textContent = `${hGrade.toUpperCase()} // ${aGrade.toUpperCase()}`;
             }
 
             chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -639,19 +664,19 @@
             document.getElementById('retrieverCount').textContent = candidates.length;
             list.innerHTML = '';
 
-            candidates.forEach((c, i) => {
+            candidates.forEach((c) => {
                 const item = document.createElement('div');
-                item.className = 'p-2 rounded-lg bg-gray-50 dark:bg-darkCard border border-gray-200 dark:border-darkBorder hover:border-blue-500 cursor-pointer transition-colors';
+                item.className = 'p-2.5 rounded border border-borderSubtle bg-black hover:border-neutral-500 cursor-pointer transition-colors';
                 item.innerHTML = `
-                    <div class="flex items-center justify-between mb-1">
-                        <div class="flex items-center gap-1.5 truncate">
-                            <span class="font-bold text-[10px] text-gray-400">#${c.index}</span>
-                            <span class="font-semibold text-xs text-gray-800 dark:text-gray-200 truncate">${c.filename}</span>
-                            ${c.is_table ? '<span class="text-[9px] px-1 rounded bg-amber-900/60 text-amber-300 font-bold">TABELA</span>' : ''}
+                    <div class="flex items-center justify-between mb-1 font-mono">
+                        <div class="flex items-center gap-2 truncate">
+                            <span class="text-neutral-600 text-[10px]">#${c.index}</span>
+                            <span class="font-medium text-xs text-neutral-200 truncate">${c.filename}</span>
+                            ${c.is_table ? '<span class="text-[9px] px-1 rounded border border-neutral-800 text-neutral-400">TABELA</span>' : ''}
                         </div>
-                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-900/40 text-blue-300">${c.company}</span>
+                        <span class="text-[10px] text-neutral-500 uppercase">${c.company}</span>
                     </div>
-                    <p class="text-[11px] text-gray-500 dark:text-gray-400 line-clamp-2">${c.preview}</p>
+                    <p class="text-[11px] text-neutral-500 line-clamp-2">${c.preview}</p>
                 `;
                 item.onclick = () => {
                     showPreview(c.filename, c.full_text || c.preview);
@@ -667,26 +692,25 @@
             document.getElementById('rerankCount').textContent = candidates.length;
             list.innerHTML = '';
 
-            candidates.forEach((c, i) => {
+            candidates.forEach((c) => {
                 const item = document.createElement('div');
-                item.className = 'p-2.5 rounded-lg bg-gray-50 dark:bg-darkCard border border-gray-200 dark:border-darkBorder hover:border-blue-500 cursor-pointer transition-colors';
+                item.className = 'p-3 rounded border border-borderSubtle bg-black hover:border-neutral-500 cursor-pointer transition-colors';
                 
                 const scorePercent = Math.min(100, Math.max(0, Math.round(c.score * 100)));
-                const scoreColor = c.score > 0.65 ? 'text-emerald-400' : (c.score > 0.4 ? 'text-blue-400' : 'text-gray-400');
 
                 item.innerHTML = `
-                    <div class="flex items-center justify-between mb-1">
-                        <div class="flex items-center gap-1.5 truncate">
-                            <span class="font-bold text-xs text-gray-400">#${c.rank}</span>
-                            <span class="font-semibold text-xs text-gray-800 dark:text-gray-200 truncate">${c.filename}</span>
-                            ${c.is_table ? '<span class="text-[9px] px-1 rounded bg-amber-900/60 text-amber-300 font-bold">TABELA</span>' : ''}
+                    <div class="flex items-center justify-between mb-1 font-mono">
+                        <div class="flex items-center gap-2 truncate">
+                            <span class="text-neutral-600 text-xs">#${c.rank}</span>
+                            <span class="font-medium text-xs text-neutral-200 truncate">${c.filename}</span>
+                            ${c.is_table ? '<span class="text-[9px] px-1 rounded border border-neutral-800 text-neutral-400">TABELA</span>' : ''}
                         </div>
-                        <span class="font-mono text-xs font-bold ${scoreColor}">Score: ${c.score.toFixed(3)}</span>
+                        <span class="text-xs font-mono text-neutral-300">SCORE: ${c.score.toFixed(3)}</span>
                     </div>
-                    <div class="w-full bg-gray-200 dark:bg-gray-800 rounded-full h-1 mb-2">
-                        <div class="bg-blue-500 h-1 rounded-full" style="width: ${scorePercent}%"></div>
+                    <div class="w-full bg-neutral-900 rounded-full h-1 my-2">
+                        <div class="bg-neutral-300 h-1 rounded-full" style="width: ${scorePercent}%"></div>
                     </div>
-                    <p class="text-[11px] text-gray-500 dark:text-gray-400 line-clamp-2">${c.preview}</p>
+                    <p class="text-[11px] text-neutral-500 line-clamp-2">${c.preview}</p>
                 `;
 
                 item.onclick = () => {
@@ -698,38 +722,36 @@
             });
         }
 
-        // Render TAB 3: LLM Grader Verdicts & Explanations
+        // Render TAB 3: LLM Grader Verdicts
         function renderGraderVerdicts(verdicts) {
             const list = document.getElementById('graderVerdictsList');
             document.getElementById('graderCount').textContent = verdicts.length;
             list.innerHTML = '';
 
             const accepted = verdicts.filter(v => v.verdict === 'relevant').length;
-            document.getElementById('graderSummaryText').textContent = `${accepted} zaakceptowanych z ${verdicts.length}`;
+            document.getElementById('graderSummaryText').textContent = `${accepted} / ${verdicts.length} ZAAKCEPTOWANYCH`;
 
-            verdicts.forEach((v, i) => {
+            verdicts.forEach((v) => {
                 const item = document.createElement('div');
                 const isRel = v.verdict === 'relevant';
-                const borderColor = isRel ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-red-500/30 bg-red-500/5';
-                const badgeColor = isRel ? 'bg-emerald-900/60 text-emerald-300 border-emerald-700' : 'bg-red-900/60 text-red-300 border-red-700';
 
-                item.className = `p-2.5 rounded-lg border ${borderColor} transition-colors cursor-pointer`;
+                item.className = 'p-3 rounded border border-borderSubtle bg-black hover:border-neutral-500 transition-colors cursor-pointer';
                 item.innerHTML = `
-                    <div class="flex items-center justify-between mb-1">
-                        <div class="flex items-center gap-1.5 truncate">
-                            <span class="font-bold text-[10px] text-gray-400">#${v.index}</span>
-                            <span class="font-semibold text-xs text-gray-800 dark:text-gray-200 truncate">${v.filename}</span>
+                    <div class="flex items-center justify-between mb-1.5 font-mono">
+                        <div class="flex items-center gap-2 truncate">
+                            <span class="text-neutral-600 text-[10px]">#${v.index}</span>
+                            <span class="font-medium text-xs text-neutral-200 truncate">${v.filename}</span>
                         </div>
-                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded border ${badgeColor}">
-                            ${isRel ? '✅ ZAAKCEPTOWANY' : '❌ ODRZUCONY'}
+                        <span class="text-[10px] font-mono px-2 py-0.5 rounded border ${isRel ? 'border-neutral-600 bg-neutral-900 text-neutral-200' : 'border-neutral-800 bg-black text-neutral-500'}">
+                            ${isRel ? 'ZAAKCEPTOWANY' : 'ODRZUCONY'}
                         </span>
                     </div>
-                    <p class="text-[11px] text-gray-700 dark:text-gray-300 mb-1.5"><b>Werdykt:</b> ${v.explanation || 'Brak uzasadnienia'}</p>
-                    <p class="text-[10px] text-gray-500 line-clamp-1 italic">${v.preview}</p>
+                    <p class="text-[11px] text-neutral-300 mb-1 leading-relaxed"><b class="text-neutral-500">Werdykt:</b> ${v.explanation || 'Brak uzasadnienia'}</p>
+                    <p class="text-[10px] font-mono text-neutral-600 line-clamp-1">${v.preview}</p>
                 `;
 
                 item.onclick = () => {
-                    showPreview(`${v.filename} (${v.verdict.toUpperCase()})`, v.full_text || v.preview);
+                    showPreview(`${v.filename} [${v.verdict.toUpperCase()}]`, v.full_text || v.preview);
                     document.querySelector('[data-tab="tab-preview"]').click();
                 };
 
@@ -743,36 +765,35 @@
             document.getElementById('rewriteCount').textContent = info.retry_number || '1';
 
             const card = document.createElement('div');
-            card.className = 'p-3 rounded-lg border border-amber-500/50 bg-amber-500/10 space-y-1.5 text-xs';
+            card.className = 'p-3.5 rounded border border-amber-800/80 bg-blackElevated space-y-2 text-xs font-mono';
             card.innerHTML = `
-                <div class="flex items-center gap-1.5 font-bold text-amber-400">
-                    <i data-lucide="alert-triangle" class="w-4 h-4"></i>
-                    <span>Pętla Samonaprawcza #${info.retry_number} — Wszystkie fragmenty odrzucone!</span>
+                <div class="flex items-center gap-2 font-medium text-amber-300 uppercase tracking-wider text-[10px]">
+                    <i data-lucide="alert-circle" class="w-3.5 h-3.5 text-amber-400" stroke-width="1.75"></i>
+                    <span>Pętla Samonaprawcza #${info.retry_number} — Odrzucenie Nieistotnych Danych</span>
                 </div>
-                <p class="text-[11px] text-gray-300">LLM Grader odrzucił poprzednie kandydaty jako nieadekwatne. Węzeł <b>Rewrite Query</b> przeformułował zapytanie:</p>
-                <div class="p-2 rounded bg-darkCard border border-darkBorder font-mono text-[10px] space-y-1">
-                    <div class="text-red-400">❌ Pierwotne: ${info.original_query}</div>
-                    <div class="text-emerald-400">✅ Zoptymalizowane: ${info.new_query}</div>
+                <p class="text-[11px] text-neutral-400 font-sans">Fragmenty z pierwszego zapytania zostały odrzucone przez filtr merytoryczny. Węzeł Rewrite przekształcił intencję zapytania:</p>
+                <div class="p-2.5 rounded bg-black border border-borderSubtle text-[10px] space-y-1">
+                    <div class="text-neutral-500">PIERWOTNE: ${info.original_query}</div>
+                    <div class="text-neutral-200">ZOPTYMALIZOWANE: ${info.new_query}</div>
                 </div>
             `;
             container.innerHTML = '';
             container.appendChild(card);
             lucide.createIcons();
 
-            // Switch to rewrite tab automatically if triggered
             document.querySelector('[data-tab="tab-rewrite"]').click();
         }
 
         function showPreview(title, text) {
-            document.getElementById('previewHeader').innerHTML = `<span class="font-bold text-blue-400">${title}</span>`;
+            document.getElementById('previewHeader').innerHTML = `<span>DOKUMENT: <b class="text-neutral-200">${title}</b></span>`;
             document.getElementById('previewBody').innerHTML = marked.parse(text);
         }
 
         function appendUserMessage(text) {
             const div = document.createElement('div');
-            div.className = 'flex justify-end';
+            div.className = 'flex justify-end anim-fade-in';
             div.innerHTML = `
-                <div class="max-w-[85%] rounded-2xl rounded-tr-sm bg-blue-600 text-white px-3.5 py-2.5 text-xs shadow-md leading-relaxed">
+                <div class="max-w-[85%] rounded border border-borderSubtle bg-blackElevated text-neutral-200 px-4 py-2.5 text-xs leading-relaxed font-sans">
                     ${escapeHtml(text)}
                 </div>
             `;
@@ -782,18 +803,17 @@
 
         function appendAssistantPlaceholder(msgId) {
             const div = document.createElement('div');
-            div.className = 'flex gap-2.5 text-xs';
+            div.className = 'flex gap-3 text-xs anim-fade-in';
             div.id = msgId;
             div.innerHTML = `
-                <div class="w-7 h-7 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex-shrink-0 flex items-center justify-center text-white shadow-sm mt-1">
-                    <i data-lucide="bot" class="w-3.5 h-3.5"></i>
+                <div class="w-6 h-6 rounded border border-neutral-700 bg-neutral-900 flex-shrink-0 flex items-center justify-center text-neutral-300 mt-0.5">
+                    <i data-lucide="cpu" class="w-3 h-3" stroke-width="1.5"></i>
                 </div>
-                <div class="flex-1 space-y-2">
-                    <div id="${msgId}-content" class="prose dark:prose-invert max-w-none text-gray-800 dark:text-gray-200 leading-relaxed text-xs">
-                        <span class="text-gray-400 animate-pulse">Uruchamiam graf stanów LangGraph...</span>
+                <div class="flex-1 space-y-2.5">
+                    <div id="${msgId}-content" class="prose max-w-none text-neutral-300 leading-relaxed text-xs">
+                        <span class="text-neutral-500 font-mono animate-pulse">Uruchamianie potoku LangGraph...</span>
                     </div>
                     <div id="${msgId}-citations" class="flex flex-wrap items-center gap-1.5 pt-1 hidden">
-                        <!-- Citations inserted here -->
                     </div>
                 </div>
             `;
@@ -806,7 +826,7 @@
             return String(string).replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[s]);
         }
 
-        // Modal Management
+        // Upload Modal Controls
         const uploadModal = document.getElementById('uploadModal');
         document.getElementById('uploadModalBtn').addEventListener('click', () => uploadModal.classList.remove('hidden'));
         document.getElementById('closeModalBtn').addEventListener('click', () => uploadModal.classList.add('hidden'));
@@ -815,16 +835,15 @@
         fileInput.addEventListener('change', () => {
             if (fileInput.files.length > 0) {
                 const nameDiv = document.getElementById('selectedFileName');
-                nameDiv.textContent = `Wybrany: ${fileInput.files[0].name}`;
+                nameDiv.textContent = `Wybrany plik: ${fileInput.files[0].name}`;
                 nameDiv.classList.remove('hidden');
             }
         });
 
-        // Upload Form Handler
         document.getElementById('uploadForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             if (!fileInput.files.length) {
-                alert("Wybierz plik!");
+                alert("Wybierz plik do wysłania.");
                 return;
             }
 
@@ -842,10 +861,11 @@
                 });
                 const result = await res.json();
                 if (res.ok) {
-                    alert(`✅ Sukces!\nDokument "${result.title}" został przetworzony przez OCR i natychmiast zindeksowany w pamięci wektorowej.`);
+                    alert(`Dokument "${result.title}" został przetworzony i natychmiast zindeksowany w pamięci.`);
                     uploadModal.classList.add('hidden');
                     fileInput.value = '';
                     document.getElementById('selectedFileName').classList.add('hidden');
+                    loadKnowledgeDocuments();
                 } else {
                     alert(`Błąd: ${result.detail || 'Nieznany błąd'}`);
                 }
@@ -858,7 +878,7 @@
             }
         });
 
-        // Knowledge Lake Documents Management
+        // Knowledge Lake Documents Browser Logic
         let cachedDocuments = [];
 
         async function loadKnowledgeDocuments() {
@@ -889,38 +909,30 @@
             container.innerHTML = '';
 
             if (docs.length === 0) {
-                container.innerHTML = '<div class="text-center py-6 text-gray-400">Brak dokumentów w bazie wiedzy.</div>';
+                container.innerHTML = '<div class="text-center py-8 text-neutral-600 font-mono">Brak dokumentów w bazie.</div>';
                 return;
             }
 
             docs.forEach(d => {
                 const card = document.createElement('div');
-                card.className = 'p-2.5 rounded-lg bg-gray-50 dark:bg-darkCard border border-gray-200 dark:border-darkBorder hover:border-blue-500 transition-colors flex items-center justify-between gap-2';
-
-                const domainColors = {
-                    finance: 'bg-emerald-900/40 text-emerald-300 border-emerald-700',
-                    education: 'bg-indigo-900/40 text-indigo-300 border-indigo-700',
-                    legal: 'bg-purple-900/40 text-purple-300 border-purple-700',
-                    general: 'bg-blue-900/40 text-blue-300 border-blue-700',
-                };
-                const badgeColor = domainColors[d.domain] || 'bg-gray-800 text-gray-300';
+                card.className = 'p-3 rounded border border-borderSubtle bg-black hover:border-neutral-500 transition-colors flex items-center justify-between gap-3 font-mono';
 
                 card.innerHTML = `
                     <div class="flex-1 truncate">
-                        <div class="flex items-center gap-1.5 mb-0.5 truncate">
-                            <span class="font-bold text-xs text-gray-900 dark:text-white truncate">${d.title}</span>
-                            <span class="text-[9px] font-mono px-1.5 py-0.2 rounded border ${badgeColor} uppercase">${d.domain}</span>
-                            ${d.ocr_used ? '<span class="text-[9px] px-1 rounded bg-amber-900/60 text-amber-300 font-bold">OCR</span>' : ''}
-                            ${d.tables_count > 0 ? `<span class="text-[9px] px-1 rounded bg-blue-900/60 text-blue-300 font-bold">${d.tables_count} TABEL</span>` : ''}
+                        <div class="flex items-center gap-2 mb-1 truncate">
+                            <span class="font-medium text-xs text-neutral-200 truncate font-sans">${d.title}</span>
+                            <span class="text-[9px] px-1.5 py-0.2 rounded border border-neutral-800 bg-black text-neutral-400 uppercase">${d.domain}</span>
+                            ${d.ocr_used ? '<span class="text-[9px] px-1 rounded border border-neutral-700 text-neutral-300">OCR</span>' : ''}
+                            ${d.tables_count > 0 ? `<span class="text-[9px] px-1 rounded border border-neutral-700 text-neutral-300">${d.tables_count} TABEL</span>` : ''}
                         </div>
-                        <div class="text-[10px] text-gray-500 font-mono">${d.filename} • ${(d.size_bytes / 1024).toFixed(1)} KB</div>
+                        <div class="text-[10px] text-neutral-500">${d.filename} • ${(d.size_bytes / 1024).toFixed(1)} KB</div>
                     </div>
-                    <div class="flex items-center gap-1.5 flex-shrink-0">
-                        <button class="px-2 py-1 rounded bg-gray-200 dark:bg-gray-800 hover:bg-blue-600 hover:text-white text-[11px] font-medium transition-colors" onclick="viewDocumentFullContent('${d.domain}', '${d.filename}', '${d.title}')">
-                            🔍 Podgląd
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        <button class="px-2.5 py-1 rounded border border-borderSubtle bg-black hover:bg-neutral-900 text-neutral-300 text-[11px] transition-colors" onclick="viewDocumentFullContent('${d.domain}', '${d.filename}', '${d.title}')">
+                            Podgląd
                         </button>
-                        <button class="px-2 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-medium transition-colors" onclick="askAboutDocument('${d.title}', '${d.filename}')">
-                            💬 Zapytaj
+                        <button class="px-2.5 py-1 rounded bg-white hover:bg-neutral-200 text-black text-[11px] font-sans font-medium transition-colors" onclick="askAboutDocument('${d.title}', '${d.filename}')">
+                            Zapytaj
                         </button>
                     </div>
                 `;
@@ -933,17 +945,17 @@
             try {
                 const res = await fetch(`/api/v1/documents/${domain}/${filename}`);
                 const data = await res.json();
-                showPreview(`${title} (${filename})`, data.content);
+                showPreview(`${title} [${filename}]`, data.content);
                 document.querySelector('[data-tab="tab-preview"]').click();
                 document.getElementById('documentsModal').classList.add('hidden');
             } catch (e) {
-                alert("Błąd pobierania treści: " + e.message);
+                alert("Błąd pobierania zawartości: " + e.message);
             }
         }
 
         function askAboutDocument(title, filename) {
             document.getElementById('documentsModal').classList.add('hidden');
-            queryInput.value = `Przedstaw kluczowe fakty, dane i tabele z dokumentu ${filename} (${title}).`;
+            queryInput.value = `Przedstaw kluczowe dane finansowe i wskaźniki z dokumentu ${filename} (${title}).`;
             queryInput.focus();
         }
 
@@ -955,22 +967,22 @@
         });
         document.getElementById('closeDocsModalBtn').addEventListener('click', () => docsModal.classList.add('hidden'));
 
-        // Search inside modal
+        // Search in Modal
         document.getElementById('docSearchInput').addEventListener('input', (e) => {
             const q = e.target.value.toLowerCase();
             const filtered = cachedDocuments.filter(d => d.title.toLowerCase().includes(q) || d.filename.toLowerCase().includes(q));
             renderDocumentsList(filtered, 'modalDocsList', true);
         });
 
-        // Domain Filter inside modal
+        // Filter by Domain in Modal
         document.querySelectorAll('.doc-filter-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.doc-filter-btn').forEach(b => {
-                    b.classList.remove('active', 'bg-blue-600', 'text-white');
-                    b.classList.add('bg-gray-100', 'dark:bg-darkCard', 'text-gray-400');
+                    b.classList.remove('active', 'border-white', 'bg-white', 'text-black');
+                    b.classList.add('border-borderSubtle', 'bg-black', 'text-neutral-400');
                 });
-                btn.classList.add('active', 'bg-blue-600', 'text-white');
-                btn.classList.remove('bg-gray-100', 'dark:bg-darkCard', 'text-gray-400');
+                btn.classList.add('active', 'border-white', 'bg-white', 'text-black');
+                btn.classList.remove('border-borderSubtle', 'bg-black', 'text-neutral-400');
 
                 const dom = btn.dataset.domain;
                 const filtered = dom === 'all' ? cachedDocuments : cachedDocuments.filter(d => d.domain === dom);
@@ -978,7 +990,7 @@
             });
         });
 
-        // Initial fetch on page load
+        // Initial fetch
         loadKnowledgeDocuments();
     </script>
 </body>
