@@ -121,7 +121,7 @@
     .gnode[data-state="done"] .gnode-meta { fill: var(--ok); }
     .gnode[data-state="idle"] .gnode-box { opacity: .72; }
 
-    .edge-label { fill: var(--fg3); font-size: 10px; font-family: "IBM Plex Mono", monospace; opacity: .7; transition: opacity .35s, fill .35s; paint-order: stroke fill; stroke: var(--bg); stroke-width: 3px; stroke-linejoin: round; }
+    .edge-label { fill: var(--fg3); font-size: 10px; font-family: "IBM Plex Mono", monospace; opacity: .7; transition: opacity .35s, fill .35s; paint-order: stroke fill; stroke: var(--bg); stroke-width: 4px; stroke-linejoin: round; }
     .edge-label.is-hot { opacity: 1; fill: var(--warn); }
 
     /* ── Taśma przebiegu: gdzie poszedł czas i co kosztowało ── */
@@ -300,20 +300,20 @@
       <g class="edge" data-edge="e9"><path class="edge-base" pathLength="1" style="animation-delay:.50s" d="M1220 100 H1252" marker-end="url(#ah)"/><path class="edge-flow" d="M1220 100 H1252"/></g>
 
       <!-- Pętla autokorekty: grade → rewrite → retrieve (górą) -->
-      <g class="edge is-loop" data-edge="e4"><path class="edge-base" pathLength="1" style="animation-delay:.58s" d="M702 76 V32 H590" marker-end="url(#ah)"/><path class="edge-flow" d="M702 76 V32 H590"/></g>
+      <g class="edge is-loop" data-edge="e4"><path class="edge-base" pathLength="1" style="animation-delay:.58s" d="M720 76 V32 H590" marker-end="url(#ah)"/><path class="edge-flow" d="M720 76 V32 H590"/></g>
       <g class="edge is-loop" data-edge="e5"><path class="edge-base" pathLength="1" style="animation-delay:.64s" d="M430 32 H281 V76" marker-end="url(#ah)"/><path class="edge-flow" d="M430 32 H281 V76"/></g>
 
       <!-- Adaptive Router: pominięcie RAG (dołem) -->
-      <g class="edge" data-edge="e7"><path class="edge-base" pathLength="1" style="animation-delay:.70s" d="M99 124 V160 H944 V132" marker-end="url(#ah)"/><path class="edge-flow" d="M99 124 V160 H944 V132"/></g>
+      <g class="edge" data-edge="e7"><path class="edge-base" pathLength="1" style="animation-delay:.70s" d="M99 124 V166 H900 V132" marker-end="url(#ah)"/><path class="edge-flow" d="M99 124 V166 H900 V132"/></g>
 
-      <!-- Pętla regeneracji: guard → generate (dołem) -->
-      <g class="edge is-loop" data-edge="e10"><path class="edge-base" pathLength="1" style="animation-delay:.76s" d="M1142 124 V144 H990 V132" marker-end="url(#ah)"/><path class="edge-flow" d="M1142 124 V144 H990 V132"/></g>
+      <!-- Pętla regeneracji: guard → generate (dołem, szeroki łuk z dużym marginesem na etykietę) -->
+      <g class="edge is-loop" data-edge="e10"><path class="edge-base" pathLength="1" style="animation-delay:.76s" d="M1180 124 V146 H955 V132" marker-end="url(#ah)"/><path class="edge-flow" d="M1180 124 V146 H955 V132"/></g>
 
       <!-- Etykiety przejść warunkowych -->
-      <text class="edge-label" data-lbl="e7"  x="500"  y="173" text-anchor="middle" data-i18n="lblSkip">pomija RAG (pamięć dialogu)</text>
-      <text class="edge-label" data-lbl="e4"  x="650"  y="26"  text-anchor="middle" data-i18n="lblRejected">odrzucone (szum)</text>
+      <text class="edge-label" data-lbl="e7"  x="500"  y="174" text-anchor="middle" data-i18n="lblSkip">pomija RAG (pamięć dialogu)</text>
+      <text class="edge-label" data-lbl="e4"  x="655"  y="25"  text-anchor="middle" data-i18n="lblRejected">odrzucone (szum)</text>
       <text class="edge-label" data-lbl="e6"  x="818"  y="92"  text-anchor="middle" data-i18n="lblRelevant">trafne</text>
-      <text class="edge-label" data-lbl="e10" x="1080" y="139" text-anchor="middle" data-i18n="lblHalluc">halucynacja (regeneracja)</text>
+      <text class="edge-label" data-lbl="e10" x="1068" y="140" text-anchor="middle" data-i18n="lblHalluc">halucynacja (regeneracja)</text>
 
       <!-- Węzeł decyzyjny: kształt wskazuje, że wybiera drogę -->
       <g class="gnode" data-node="router" data-role="decision" data-state="idle" style="animation-delay:.06s">
