@@ -122,6 +122,22 @@ def list_knowledge_documents() -> List[DocumentItem]:
     return items
 
 
+@app.get("/api/v1/documents/{domain}/{filename}", tags=["Knowledge Lake"])
+def get_document_content(domain: str, filename: str):
+    """Zwraca pełną treść i metadane pojedynczego dokumentu z repozytorium Knowledge Lake."""
+    file_path = Path("data/knowledge_base") / domain / filename
+    if not file_path.exists() or not file_path.is_file():
+        raise HTTPException(status_code=404, detail="Dokument nie został odnaleziony w bazie wiedzy.")
+    content = file_path.read_text(encoding="utf-8")
+    return {
+        "filename": filename,
+        "domain": domain,
+        "size_bytes": file_path.stat().st_size,
+        "content": content,
+    }
+
+
+
 @app.post("/api/v1/documents/upload", response_model=IngestResponse, tags=["Knowledge Lake"])
 async def upload_document(
     file: UploadFile = File(...),
