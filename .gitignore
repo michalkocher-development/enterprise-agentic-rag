@@ -1,0 +1,35 @@
+# Environment & Secrets (NIGDY NIE COMMITOWAĆ KLUCZY)
+.env
+.env.*
+!.env.example
+
+# Python & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+
+# Testing & Diagnostics
+.pytest_cache/
+.coverage
+htmlcov/
+.cache/
+
+# Cache danych wygenerowanych (zachowujemy raporty w data/financial_reports/)
+data/vector_cache/
+*.pt
+*.bin
+models/
+.chroma/
+
+# IDE & System Files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

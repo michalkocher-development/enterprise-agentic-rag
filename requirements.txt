@@ -1,0 +1,22 @@
+# Core Frameworks & Orchestration
+langchain-core>=1.6.0
+langchain-google-genai>=4.4.0
+langchain-text-splitters>=1.1.0
+langgraph>=1.2.10
+langsmith>=0.12.0
+
+# Deep Learning & Hardware Acceleration
+# Uwaga: Dla akceleracji CUDA na GPU zainstaluj torch z index-url https://download.pytorch.org/whl/cu124
+sentence-transformers>=6.0.0
+transformers>=5.16.0
+
+# Settings, Typing & Observability
+pydantic>=2.13.0
+pydantic-settings>=2.15.0
+python-dotenv>=1.2.0
+
+# Cloud & Storage
+boto3>=1.43.0
+
+# Testing & Quality
+pytest>=9.1.0
