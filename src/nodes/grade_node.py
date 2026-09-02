@@ -49,10 +49,12 @@ async def _grade_all_documents(
         verdict_str = "relevant" if is_relevant else "irrelevant"
         doc.metadata["grader_verdict"] = verdict_str
         doc.metadata["grader_explanation"] = explanation
+        chunk_id = doc.metadata.get("chunk_id", f"{doc.metadata.get('filename', 'doc')}#p{idx}")
 
         verdicts.append(
             {
                 "index": idx + 1,
+                "chunk_id": chunk_id,
                 "filename": doc.metadata.get("filename", "nieznany"),
                 "company": doc.metadata.get("company", doc.metadata.get("domain", "ogólny")),
                 "preview": doc.page_content[:250],
@@ -74,6 +76,7 @@ def grade_documents_node(state: GraphState) -> Dict[str, Any]:
     settings = get_settings()
     question = state["question"]
     documents = state.get("documents", [])
+    lang = state.get("lang", "pl")
 
     if not documents:
         return {"documents": [], "web_search_needed": True, "graded_verdicts": []}
@@ -85,20 +88,27 @@ def grade_documents_node(state: GraphState) -> Dict[str, Any]:
     )
     structured_llm_grader = llm.with_structured_output(GradeDocuments)
 
-    system_prompt = (
-        "Jesteś rygorystycznym audytorem jakości informacji w systemie Agentic RAG.\n"
-        "Oceniasz, czy dany fragment tekstu lub tabela zawiera fakty, liczby lub kontekst pomocny w odpowiedzi na pytanie użytkownika.\n"
-        "Jeśli fragment dotyczy zupełnie innej dziedziny (np. pytanie dotyczy dyplomu/uczelni, a tekst to finanse Microsoftu) — bezwzględnie wybierz 'no'.\n"
-        "Podaj zwięzłe uzasadnienie (1 zdanie), dlaczego fragment jest przydatny lub nie."
-    )
+    if lang == "en":
+        system_prompt = (
+            "You are a rigorous information quality auditor in an Agentic RAG system.\n"
+            "Evaluate whether the given text chunk or table contains facts, figures, or context helpful to answering the user question.\n"
+            "If the chunk is completely off-topic, strictly choose 'no'.\n"
+            "Provide a concise explanation (1 sentence) in English stating why it is useful or why it was rejected."
+        )
+        human_prompt = "Question: {question}\n\nCandidate chunk:\n{document}\n\nVerdict:"
+    else:
+        system_prompt = (
+            "Jesteś rygorystycznym audytorem jakości informacji w systemie Agentic RAG.\n"
+            "Oceniasz, czy dany fragment tekstu lub tabela zawiera fakty, liczby lub kontekst pomocny w odpowiedzi na pytanie użytkownika.\n"
+            "Jeśli fragment dotyczy zupełnie innej dziedziny (np. pytanie dotyczy dyplomu/uczelni, a tekst to finanse Microsoftu) — bezwzględnie wybierz 'no'.\n"
+            "Podaj zwięzłe uzasadnienie (1 zdanie), dlaczego fragment jest przydatny lub nie."
+        )
+        human_prompt = "Pytanie: {question}\n\nOceniany fragment:\n{document}\n\nWerdykt:"
 
     prompt = ChatPromptTemplate.from_messages(
         [
             ("system", system_prompt),
-            (
-                "human",
-                "Pytanie: {question}\n\nOceniany fragment:\n{document}\n\nWerdykt:",
-            ),
+            ("human", human_prompt),
         ]
     )
 

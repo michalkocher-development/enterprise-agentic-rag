@@ -107,10 +107,11 @@ def test_conversational_memory_and_adaptive_router():
 
 
 def test_fastapi_chat_stream_sse(client):
-    """Weryfikuje streaming zdarzeń Server-Sent Events (SSE)."""
+    """Weryfikuje streaming zdarzeń Server-Sent Events (SSE) przez POST."""
     payload = {
-        "question": "Podaj jedno zdanie o EU AI Act.",
+        "question": "Cześć, jak się masz?",
         "thread_id": "test-sse-thread-1",
+        "lang": "pl",
     }
     response = client.post("/api/v1/chat/stream", json=payload)
     assert response.status_code == 200
@@ -118,5 +119,45 @@ def test_fastapi_chat_stream_sse(client):
 
     content = response.text
     assert "event: session" in content
+    assert "event: node_start" in content
     assert "event: step" in content
     assert "event: complete" in content
+
+
+def test_fastapi_chat_stream_get_endpoint(client):
+    """Weryfikuje natywne wsparcie przeglądarkowego EventSource (metoda GET /api/v1/chat/stream)."""
+    response = client.get("/api/v1/chat/stream?q=Hej&lang=en&thread_id=test-get-sse-1")
+    assert response.status_code == 200
+    assert "text/event-stream" in response.headers["content-type"]
+
+    content = response.text
+    assert "event: session" in content
+    assert "event: node_start" in content
+    assert "event: complete" in content
+
+
+def test_fastapi_replay_endpoints(client):
+    """Weryfikuje listowanie i strumieniowe odtwarzanie wzorcowych scenariuszy demo."""
+    # 1. Lista scenariuszy
+    res_list = client.get("/api/v1/replays")
+    assert res_list.status_code == 200
+    scenarios = res_list.json()
+    assert len(scenarios) >= 3
+    ids = [s["id"] for s in scenarios]
+    assert "direct_answer" in ids
+    assert "standard_rag" in ids
+    assert "self_correction" in ids
+
+    # 2. Odtwarzanie scenariusza self_correction z wysokim tempem (10x)
+    res_stream = client.get("/api/v1/replay/self_correction?tempo=10.0")
+    assert res_stream.status_code == 200
+    assert "text/event-stream" in res_stream.headers["content-type"]
+
+    content = res_stream.text
+    assert "event: session" in content
+    assert "event: node_start" in content
+    assert "event: token" in content
+    assert "event: step" in content
+    assert "rewrite_query" in content
+    assert "event: complete" in content
+

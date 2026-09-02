@@ -5,10 +5,11 @@
 ---
 
 ## 1. Bieżący Status
-* **Status Ogólny**: 🟢 **Nowe repozytorium utworzone: `enterprise-agentic-rag`!**
+* **Status Ogólny**: 🟢 **Nowoczesny Workbench UI (100% Live Mode) zaimplementowany i wdrożony!**
 * **Aktywny Projekt**: **Enterprise Agentic Document Intelligence & RAG Platform**.
 * **Repozytorium GitHub**: [https://github.com/michalkocher-development/enterprise-agentic-rag](https://github.com/michalkocher-development/enterprise-agentic-rag)
-* **Aktualny Krok**: Utworzono niezależny silnik normalizacji dokumentów `DocumentNormalizer` z obsługą tabel (`pdfplumber`), skanów OCR (`RapidOCR`) i zapisem do Markdown Knowledge Lake. Testy (3/3) na zielono. Ready for Fast API & Memory!
+* **Aktualny Krok**: Wdrożono nowy frontend Workbench UI (`static/index.html`) inspirowany projektem UX Designera: 100% tryb na żywo (SSE), animowany graf SVG stanów, streaming tokenów w Markdown, 4 pełne karty z pytaniami testowymi w głównym widoku oraz zintegrowany moduł wgrywania dokumentów i OCR.
+
 
 ---
 
@@ -155,3 +156,37 @@
   2. Dodanie w UI przycisku nagłówka `Baza Dokumentów` z licznikiem na żywo oraz dedykowanej zakładki `📁 Baza Wiedzy` w prawym panelu analitycznym.
   3. Stworzenie interaktywnego modala z filtrami domenowymi (`Finanse`, `Edukacja / OCR`, `Prawo`), wyszukiwarką czasu rzeczywistego oraz akcjami `🔍 Podgląd treści` i `💬 Zadaj pytanie o ten dokument`.
 * **Konsekwencje**: Kompletny, zintegrowany interfejs Knowledge Lake, gdzie użytkownik może badać i weryfikować zbiór wiedzy bez opuszczania aplikacji.
+
+### ADR-013: Protokół Telemetryczny SSE, Replay Engine i Gotowość pod Nowy Workbench UI
+* **Data**: 2026-09-02
+* **Kontekst**: Projektant UI przedstawił specyfikację nowego Workbench UI (`from_UX_designer/NOTES.md`), wymagającego:
+  1. Natychmiastowego startu węzła (`node_start`) z kierunkiem krawędzi (`edge_from`) do animacji krawędzi SVG,
+  2. Streamingu tokenów (`token`) w węźle generowania,
+  3. Stabilnych identyfikatorów fragmentów (`chunk_id`) łączących cytowania, wiersze rerankingu i werdykty gradera,
+  4. Scoringu wszystkich 10 kandydatów z flagą `kept` do animacji przetasowania,
+  5. Metody HTTP GET dla standardowego `EventSource`,
+  6. Deterministycznego silnika odtwarzania scenariuszy (`/api/v1/replay/{run_id}`) na potrzeby bezkosztowej prezentacji portfolio rekruterom,
+  7. Rozgrzewki GPU w `lifespan` FastAPI i heartbeat keepalive (`: keepalive`).
+* **Decyzja**:
+  1. Wdrożenie `astream_events(version="v2")` w `StatefulAgentGraph` i centralnym generatorze `generate_chat_sse`.
+  2. Emisja zdarzeń: `session`, `node_start`, `token`, `step`, `error`, `complete` oraz cyklicznego keepalive.
+  3. Generowanie stabilnych `chunk_id` (`{stem}#p{idx}` / `{stem}#t{idx}`) w `HierarchicalChunker` i propagowanie ich przez wszystkie węzły.
+  4. Pełne sortowanie wszystkich kandydatów w `rerank_node` z polami `score` i `kept: bool`.
+  5. Dodanie modułu `src/api/replays.py` z 3 scenariuszami (`direct_answer`, `standard_rag`, `self_correction`) i endpointami `/api/v1/replays` oraz `/api/v1/replay/{run_id}`.
+  6. Wdrożenie `lifespan` z warmupem Cross-Encodera oraz natywna obsługa `GET /api/v1/chat/stream`.
+* **Konsekwencje**: Pełna gotowość backendu do natychmiastowego spięcia z nowym frontendem, 32/32 testów regresyjnych na zielono (100% passed), zerowe ryzyko cold-startu i zerowy koszt prezentacji demo dzięki trybowi Replay.
+
+### ADR-014: Nowoczesny Workbench UI (100% Live Mode, Ekran Pytań Testowych i Ingestia Dokumentów)
+* **Data**: 2026-09-02
+* **Kontekst**: Wdrożenie interfejsu zaprojektowanego przez UX Designera (`agentic-rag-workbench.html`), z uwzględnieniem specyfiki produkcyjnej: całkowite wyeliminowanie mocków/demo (100% czysty tryb live oparty na Server-Sent Events z backendem), dodanie brakującego w projekcie modułu wgrywania dokumentów i OCR oraz wyeksponowanie pełnych treści pytań analitycznych z ich uzasadnieniem i metadanymi.
+* **Decyzja**:
+  1. Pełna implementacja estetyki Dark Minimalist Workbench (`static/index.html`) z paletą barw designera (`#08090A`, `#0D0F10`, `#14171A`), responsywnym układem `100vh` na desktopie i animowanym grafem SVG (8 węzłów, przepływy krawędzi, pętla autokorekty).
+  2. Architektura 100% Live: bez mocków, bezpośrednia integracja z `EventSource` na `/api/v1/chat/stream?q=...` odbierająca zdarzenia `session`, `node_start`, `token` (ze streamingiem markdown przez Marked.js), `step`, `error`, `complete`.
+  3. Prezentacja pytań testowych i ergonomia stopki: w głównym stanie początkowym wyeksponowano 4 estetyczne karty zawierające samą treść pytań, a w stopce wprowadzono zoptymalizowany, jednoliniowy układ 2-kolumnowy (szybki wybór pod oknem odpowiedzi, a pasek wpisywania pod kolumną telemetryczną), co pozwoliło na powiększenie grafu SVG stanów do 215px.
+  4. Moduł Ingestii i Zarządzania Dokumentami: zintegrowano modal uploadu z OCR i Parent-Document chunkingiem (`/api/v1/documents/upload`) oraz eksplorator bazy wiedzy (`/api/v1/documents`) z możliwością natychmiastowego zadania pytania o wybrany plik.
+  5. Audyt interfejsu i Observability: wyeliminowano kolizje etykiet grafu SVG – wydłużono krawędź e6 do 68px dla etykiety 'trafne', poszerzono pętlę e10 (regeneracja dołem z 135px do 205px: M1070 V168 H865), zapewniając 28px marginesu wokół grota strzałki 'halucynacja (regeneracja)', a w nagłówku i endpointzie `/api/v1/health` przywrócono widoczność i weryfikację aktywnego tracera LangSmith (`langsmith_active: true`).
+  6. Protokół Bezpieczeństwa Treści (Gatekeeper przed Halucynacją): odpowiedź generowana przez LLM jest buforowana w pamięci i nie jest ujawniana użytkownikowi, dopóki węzeł `hallucination_check` nie wyda pozytywnego werdyktu ugruntowania w zweryfikowanych źródłach (`grounded` / `yes`). W razie halucynacji brudnopis jest bezpowrotnie odrzucany i uruchamiana jest regeneracja, chroniąc użytkownika przed dezinformacją.
+  7. Bezpośrednie linki do narzędzi (Swagger UI i LangSmith) i pełna interaktywność dokumentów źródłowych: na górnym pasku w miejsce wskaźnika GPU umieszczono bezpośredni odnośnik do interaktywnej dokumentacji OpenAPI/Swagger (`/docs`), zachowano link do projektu w chmurze LangSmith (`smith.langchain.com`), a w interfejsie dodano wielopoziomowe otwieranie treści dokumentów (klikalny tytuł pliku `citeDetailTitleBtn`, przycisk `Cały plik`, chipy cytowań, odnośniki inline `[1]`, `[2]` w treści odpowiedzi oraz modal pełnego podglądu pliku Markdown `docPreviewModal` ze 100% precyzyjnym mapowaniem domen).
+* **Konsekwencje**: Pełna ochrona wiarygodności faktograficznej platformy, natychmiastowy dostęp do telemetrii w LangSmith i dokumentacji Swagger UI oraz możliwość dogłębnej inspekcji źródeł i tabel źródłowych przez analityka bez opuszczania interfejsu.
+
+

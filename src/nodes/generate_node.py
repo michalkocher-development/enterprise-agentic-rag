@@ -43,18 +43,27 @@ def generate_node(state: GraphState) -> Dict[str, Any]:
         google_api_key=settings.google_api_key,
     )
 
+    lang = state.get("lang", "pl")
     reg_count = state.get("regeneration_count", 0)
     if state.get("generation"):
         reg_count += 1
 
     if route == "direct_answer":
         # Odpowiedź konwersacyjna z pamięci dialogu
-        system_prompt = (
-            "Jesteś asystentem analitycznym platformy Enterprise Agentic RAG.\n"
-            "Odpowiadasz na pytanie użytkownika na podstawie historii dotychczasowej rozmowy.\n"
-            "Jeśli użytkownik dopytuje o fakty podane wcześniej (np. oceny, liczby, daty), precyzyjnie je przytocz.\n"
-            "Odpowiadaj w języku polskim, zwięźle i naturalnie w czystym formacie Markdown."
-        )
+        if lang == "en":
+            system_prompt = (
+                "You are an analytical assistant of the Enterprise Agentic RAG platform.\n"
+                "Answer the user's question based on the conversation history.\n"
+                "If the user asks about facts mentioned earlier (e.g. scores, figures, dates), cite them accurately.\n"
+                "Respond in English, concisely and naturally in clean Markdown format."
+            )
+        else:
+            system_prompt = (
+                "Jesteś asystentem analitycznym platformy Enterprise Agentic RAG.\n"
+                "Odpowiadasz na pytanie użytkownika na podstawie historii dotychczasowej rozmowy.\n"
+                "Jeśli użytkownik dopytuje o fakty podane wcześniej (np. oceny, liczby, daty), precyzyjnie je przytocz.\n"
+                "Odpowiadaj w języku polskim, zwięźle i naturalnie w czystym formacie Markdown."
+            )
         chat_messages = [SystemMessage(content=system_prompt)]
         chat_messages.extend(messages[-6:])
         chat_messages.append(HumanMessage(content=question))
@@ -73,20 +82,35 @@ def generate_node(state: GraphState) -> Dict[str, Any]:
     else:
         # Odpowiedź ugruntowana w pobranych dokumentach (RAG)
         context_str = "\n\n---\n\n".join(
-            [f"[Dokument: {doc.metadata.get('filename', 'źródło')}]\n{doc.page_content}" for doc in documents]
+            [
+                f"[Source: {doc.metadata.get('filename', 'doc')} | ID: {doc.metadata.get('chunk_id', 'unknown')}]\n{doc.page_content}"
+                for doc in documents
+            ]
         )
 
-        system_prompt = (
-            "Jesteś precyzyjnym analitykiem technologicznym i biznesowym platformy Enterprise Agentic RAG.\n"
-            "Odpowiadasz na pytania użytkownika WYŁĄCZNIE na podstawie dostarczonego poniżej kontekstu z bazy wiedzy.\n"
-            "Zasady bezwzględne:\n"
-            "1. Podawaj dokładne liczby, artykuły prawne, parametry techniczne i wskaźniki dokładnie tak, jak w źródłach.\n"
-            "2. Jeśli kontekst nie zawiera odpowiedzi, wprost zaznacz brak tych danych w dokumentacji.\n"
-            "3. Nie twórz domysłów ani nie wprowadzaj faktów spoza dostarczonego tekstu.\n"
-            "4. Odpowiadaj w języku polskim, profesjonalnie i formatuj tabele oraz wyliczenia w czytelnym Markdown."
-        )
+        if lang == "en":
+            system_prompt = (
+                "You are a precise technology and business analyst for the Enterprise Agentic RAG platform.\n"
+                "Answer user questions EXCLUSIVELY based on the provided context from the knowledge base.\n"
+                "Strict rules:\n"
+                "1. State exact figures, legal articles, technical parameters, and metrics exactly as in the sources.\n"
+                "2. If the context does not contain the answer, explicitly state the lack of data in documentation.\n"
+                "3. Do not extrapolate or introduce facts outside the provided text.\n"
+                "4. Respond in English, professionally, formatting tables and lists in clear Markdown."
+            )
+            user_content = f"Knowledge Base Context:\n{context_str}\n\nQuestion: {question}\n\nAnalytical response:"
+        else:
+            system_prompt = (
+                "Jesteś precyzyjnym analitykiem technologicznym i biznesowym platformy Enterprise Agentic RAG.\n"
+                "Odpowiadasz na pytania użytkownika WYŁĄCZNIE na podstawie dostarczonego poniżej kontekstu z bazy wiedzy.\n"
+                "Zasady bezwzględne:\n"
+                "1. Podawaj dokładne liczby, artykuły prawne, parametry techniczne i wskaźniki dokładnie tak, jak w źródłach.\n"
+                "2. Jeśli kontekst nie zawiera odpowiedzi, wprost zaznacz brak tych danych w dokumentacji.\n"
+                "3. Nie twórz domysłów ani nie wprowadzaj faktów spoza dostarczonego tekstu.\n"
+                "4. Odpowiadaj w języku polskim, profesjonalnie i formatuj tabele oraz wyliczenia w czytelnym Markdown."
+            )
+            user_content = f"Kontekst z bazy wiedzy:\n{context_str}\n\nPytanie: {question}\n\nOdpowiedź analityczna:"
 
-        user_content = f"Kontekst z bazy wiedzy:\n{context_str}\n\nPytanie: {question}\n\nOdpowiedź analityczna:"
         chat_messages = [SystemMessage(content=system_prompt)]
         chat_messages.extend(messages[-4:])
         chat_messages.append(HumanMessage(content=user_content))

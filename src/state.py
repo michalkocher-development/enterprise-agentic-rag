@@ -51,3 +51,15 @@ class GraphState(TypedDict):
     rewrite_info: Optional[Dict[str, Any]]
     """Metadane autokorekty zapytania (pierwotne, nieudane, nowe zapytanie)."""
 
+    retry_limit: int
+    """Maksymalny dopuszczalny limit prób autokorekty zapytania (domyślnie 2)."""
+
+    regeneration_limit: int
+    """Maksymalny dopuszczalny limit prób ponownej generacji po wykryciu halucynacji (domyślnie 1)."""
+
+    lang: str
+    """Preferowany język odpowiedzi i analizy ('pl' lub 'en')."""
+
+    ranked_candidates: Optional[List[Dict[str, Any]]]
+    """Pełna lista kandydatów z wagami Cross-Encodera i statusem kept dla animacji UI."""
+

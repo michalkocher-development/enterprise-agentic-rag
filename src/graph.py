@@ -24,15 +24,16 @@ def route_decision_edge(state: GraphState) -> Literal["retrieve", "direct_answer
 def decide_to_generate(state: GraphState) -> Literal["generate", "rewrite_query"]:
     """Krawędź warunkowa decydująca czy przejść do generowania, czy przepisać zapytanie.
 
-    Jeśli żaden dokument nie przeszedł gradera i nie wyczerpano limitu prób (retry_count < 2),
+    Jeśli żaden dokument nie przeszedł gradera i nie wyczerpano limitu prób (retry_count < retry_limit),
     graf kierowany jest do węzła rewrite_query.
     """
     web_search_needed = state.get("web_search_needed", False)
     documents = state.get("documents", [])
     retry_count = state.get("retry_count", 0)
+    retry_limit = state.get("retry_limit", 2)
 
     # Brak wartościowych dokumentów -> próba autokorekty zapytania
-    if (web_search_needed or not documents) and retry_count < 2:
+    if (web_search_needed or not documents) and retry_count < retry_limit:
         return "rewrite_query"
 
     return "generate"
@@ -53,15 +54,18 @@ def grade_generation_v_documents_and_question(
     answer_grade = state.get("answer_grade", "useful")
     regeneration_count = state.get("regeneration_count", 0)
     retry_count = state.get("retry_count", 0)
+    retry_limit = state.get("retry_limit", 2)
+    regeneration_limit = state.get("regeneration_limit", 1)
 
     if hallucination_grade == "grounded":
         if answer_grade == "useful":
             return "useful"
         # Odpowiedź nie odpowiada na pytanie -> przepisanie zapytania jeśli limit nie wyczerpany
-        return "not useful" if retry_count < 2 else "useful"
+        return "not useful" if retry_count < retry_limit else "useful"
 
     # Wykryto halucynację -> jednorazowa próba ponownej generacji
-    return "not grounded" if (regeneration_count < 1 and retry_count < 2) else "useful"
+    return "not grounded" if (regeneration_count < regeneration_limit and retry_count < retry_limit) else "useful"
+
 
 
 # Wspólny checkpointer pamięci konwersacyjnej w pamięci RAM
@@ -154,6 +158,11 @@ class StatefulAgentGraph:
         config = self._ensure_thread_id(config)
         async for chunk in self._graph.astream(input, config=config, **kwargs):
             yield chunk
+
+    async def astream_events(self, input, config=None, **kwargs):
+        config = self._ensure_thread_id(config)
+        async for event in self._graph.astream_events(input, config=config, **kwargs):
+            yield event
 
     @staticmethod
     def _ensure_thread_id(config):

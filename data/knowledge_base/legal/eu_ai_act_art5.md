@@ -6,7 +6,7 @@ source_file: "eu_ai_act_art5.txt"
 pages_count: 1
 tables_count: 0
 ocr_used: false
-processed_at: "2026-09-02T19:16:17.560550"
+processed_at: "2026-09-02T20:54:17.132159"
 ---
 
 # Eu Ai Act Art5

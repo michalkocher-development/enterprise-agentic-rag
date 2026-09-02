@@ -149,13 +149,14 @@ class FinancialVectorStore:
                 try:
                     content = file_path.read_text(encoding="utf-8")
                     domain = file_path.parent.name
+                    company = self._detect_company(file_path)
                     raw_docs.append(
                         Document(
                             page_content=content,
                             metadata={
                                 "source": str(file_path),
                                 "filename": file_path.name,
-                                "company": domain.capitalize(),
+                                "company": company,
                                 "domain": domain,
                                 "title": file_path.stem.replace("_", " ").title(),
                                 "is_table": "|" in content,
@@ -187,12 +188,13 @@ class FinancialVectorStore:
             self.load_from_directory()
 
         content = file_path.read_text(encoding="utf-8")
+        company = self._detect_company(file_path)
         raw_doc = Document(
             page_content=content,
             metadata={
                 "source": str(file_path),
                 "filename": file_path.name,
-                "company": domain.capitalize(),
+                "company": company,
                 "domain": domain,
                 "title": file_path.stem.replace("_", " ").title(),
                 "is_table": "|" in content,
@@ -213,7 +215,7 @@ class FinancialVectorStore:
         if not self._is_populated:
             self.load_from_directory()
 
-        child_docs = self.vector_store.similarity_search(query, k=k * 2)
+        child_docs = self.vector_store.similarity_search(query, k=max(k * 4, 20))
 
         unique_parents: List[Document] = []
         seen_parent_ids = set()
@@ -231,6 +233,11 @@ class FinancialVectorStore:
 
             if len(unique_parents) >= k:
                 break
+
+        for idx, doc in enumerate(unique_parents):
+            if "chunk_id" not in doc.metadata:
+                stem = Path(doc.metadata.get("filename", "doc")).stem
+                doc.metadata["chunk_id"] = f"{stem}#p{idx}"
 
         return unique_parents
 

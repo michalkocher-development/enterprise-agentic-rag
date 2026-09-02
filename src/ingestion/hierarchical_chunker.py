@@ -38,23 +38,33 @@ class HierarchicalChunker:
         parent_docstore: Dict[str, Document] = {}
 
         for doc in documents:
+            filename = doc.metadata.get("filename", "doc")
+            file_stem = filename.rsplit(".", 1)[0]
             is_table = doc.metadata.get("is_table", False)
 
             if is_table:
                 # 1. Tabele finansowe: Cała tabela jest jednostką nadrzędną (Parent)
+                p_idx = len(parent_docstore)
+                chunk_id = f"{file_stem}#t{p_idx}"
                 parent_id = str(uuid.uuid4())
                 parent_doc = Document(
                     page_content=doc.page_content,
-                    metadata={**doc.metadata, "parent_id": parent_id, "is_parent": True},
+                    metadata={**doc.metadata, "parent_id": parent_id, "chunk_id": chunk_id, "is_parent": True},
                 )
                 parent_docstore[parent_id] = parent_doc
 
                 # Dzieci dla tabeli: dzielimy wierszami lub małym splitterem pod zapytania komórkowe
                 child_splits = self.child_splitter.split_text(doc.page_content)
-                for split_text in child_splits:
+                for c_idx, split_text in enumerate(child_splits):
                     child_doc = Document(
                         page_content=split_text,
-                        metadata={**doc.metadata, "parent_id": parent_id, "is_child": True},
+                        metadata={
+                            **doc.metadata,
+                            "parent_id": parent_id,
+                            "chunk_id": chunk_id,
+                            "child_id": f"{chunk_id}c{c_idx}",
+                            "is_child": True,
+                        },
                     )
                     child_documents.append(child_doc)
 
@@ -62,21 +72,29 @@ class HierarchicalChunker:
                 # 2. Tekst ciągły (narrative text): Podział na Parent Chunks
                 parent_splits = self.parent_splitter.split_text(doc.page_content)
 
-                for p_text in parent_splits:
+                for p_idx, p_text in enumerate(parent_splits):
+                    chunk_id = f"{file_stem}#p{p_idx}"
                     parent_id = str(uuid.uuid4())
                     parent_doc = Document(
                         page_content=p_text,
-                        metadata={**doc.metadata, "parent_id": parent_id, "is_parent": True},
+                        metadata={**doc.metadata, "parent_id": parent_id, "chunk_id": chunk_id, "is_parent": True},
                     )
                     parent_docstore[parent_id] = parent_doc
 
                     # Podział rodzica na drobne Child Chunks
                     child_splits = self.child_splitter.split_text(p_text)
-                    for c_text in child_splits:
+                    for c_idx, c_text in enumerate(child_splits):
                         child_doc = Document(
                             page_content=c_text,
-                            metadata={**doc.metadata, "parent_id": parent_id, "is_child": True},
+                            metadata={
+                                **doc.metadata,
+                                "parent_id": parent_id,
+                                "chunk_id": chunk_id,
+                                "child_id": f"{chunk_id}c{c_idx}",
+                                "is_child": True,
+                            },
                         )
                         child_documents.append(child_doc)
 
         return child_documents, parent_docstore
+

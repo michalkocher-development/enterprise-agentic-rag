@@ -22,13 +22,31 @@ def rerank_node(state: GraphState) -> Dict[str, Any]:
 
     reranker = get_reranker()
     
-    # Wyliczenie precyzyjnych wag w FP16 na GPU (zwracamy top 4 dla bogatego kontekstu)
-    ranked_pairs = reranker.rank(query=question, documents=documents, top_k=4)
+    # Wyliczenie precyzyjnych wag w FP16 na GPU dla WSZYSTKICH kandydatów (dla animacji przetasowania w UI)
+    all_ranked_pairs = reranker.rank(query=question, documents=documents, top_k=len(documents))
+    
+    top_k = 4
+    top_documents = [doc for doc, score in all_ranked_pairs[:top_k]]
+    top_scores = [score for doc, score in all_ranked_pairs[:top_k]]
 
-    top_documents = [doc for doc, score in ranked_pairs]
-    scores = [score for doc, score in ranked_pairs]
+    ranked_candidates = [
+        {
+            "rank": idx + 1,
+            "chunk_id": doc.metadata.get("chunk_id", f"{doc.metadata.get('filename', 'doc')}#p{idx}"),
+            "filename": doc.metadata.get("filename", "unknown"),
+            "company": doc.metadata.get("company", "general"),
+            "score": round(score, 3),
+            "kept": idx < top_k,
+            "is_table": doc.metadata.get("is_table", False),
+            "preview": doc.page_content[:250],
+            "full_text": doc.page_content,
+        }
+        for idx, (doc, score) in enumerate(all_ranked_pairs)
+    ]
 
     return {
         "documents": top_documents,
-        "rerank_scores": scores,
+        "rerank_scores": top_scores,
+        "ranked_candidates": ranked_candidates,
     }
+

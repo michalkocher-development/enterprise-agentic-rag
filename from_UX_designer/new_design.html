@@ -1,0 +1,708 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Enterprise Agentic RAG — Workbench</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        bg:'#08090A', panel:'#0D0F10', raised:'#14171A',
+        line:'rgba(255,255,255,0.08)', line2:'rgba(255,255,255,0.14)',
+        fg:'#E8EAED', fg2:'#9AA0A6', fg3:'#666B70',
+        live:'#6C8CFF', ok:'#3FBF8F', warn:'#E0A44A', bad:'#E2564D'
+      },
+      fontFamily: {
+        sans:['Inter','system-ui','sans-serif'],
+        mono:['"JetBrains Mono"','ui-monospace','monospace']
+      }
+    }
+  }
+}
+</script>
+<style>
+  :root{
+    --bg:#08090A; --panel:#0D0F10; --raised:#14171A;
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.14);
+    --fg:#E8EAED; --fg2:#9AA0A6; --fg3:#666B70;
+    --live:#6C8CFF; --ok:#3FBF8F; --warn:#E0A44A; --bad:#E2564D;
+  }
+  html,body{background:var(--bg);height:100%}
+  body{font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased;margin:0}
+  ::-webkit-scrollbar{width:9px;height:9px}
+  ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.09);border-radius:6px;border:2.5px solid transparent;background-clip:content-box}
+  ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.2);background-clip:content-box}
+  ::-webkit-scrollbar-track{background:transparent}
+  :focus-visible{outline:2px solid var(--live);outline-offset:2px;border-radius:6px}
+
+  /* graf */
+  .edge-base{fill:none;stroke:var(--line2);stroke-width:1.25;transition:stroke .4s ease}
+  .edge-flow{fill:none;stroke:var(--live);stroke-width:1.75;stroke-dasharray:5 11;stroke-linecap:round;opacity:0;transition:opacity .25s}
+  .edge.is-taken .edge-base{stroke:rgba(108,140,255,.5)}
+  .edge.is-flowing .edge-flow{opacity:1;animation:dashmove .9s linear infinite}
+  .edge.is-loop.is-taken .edge-base{stroke:rgba(224,164,74,.55)}
+  .edge.is-loop .edge-flow{stroke:var(--warn)}
+  @keyframes dashmove{to{stroke-dashoffset:-32}}
+
+  .gnode-box{fill:var(--raised);stroke:var(--line);stroke-width:1;transition:stroke .35s,fill .35s,opacity .35s}
+  .gnode-title{fill:var(--fg2);font-size:12.5px;font-weight:500;transition:fill .35s}
+  .gnode-meta{fill:var(--fg3);font-size:10.5px;font-family:"JetBrains Mono",monospace;transition:fill .35s}
+  .gnode-ring{fill:none;stroke:var(--live);stroke-width:1;opacity:0;transform-box:fill-box;transform-origin:center}
+  .gnode[data-state="active"] .gnode-box{stroke:var(--live);fill:rgba(108,140,255,.10)}
+  .gnode[data-state="active"] .gnode-title{fill:var(--fg)}
+  .gnode[data-state="active"] .gnode-meta{fill:var(--live)}
+  .gnode[data-state="active"] .gnode-ring{animation:ring 1.8s ease-out infinite}
+  .gnode[data-state="done"] .gnode-box{stroke:rgba(63,191,143,.42)}
+  .gnode[data-state="done"] .gnode-meta{fill:var(--ok)}
+  .gnode[data-state="idle"] .gnode-box{opacity:.5}
+  .gnode[data-state="idle"] .gnode-title{opacity:.7}
+  @keyframes ring{0%{opacity:.55;transform:scale(1)}100%{opacity:0;transform:scale(1.07)}}
+
+  .edge-label{fill:var(--fg3);font-size:10.5px;font-family:"JetBrains Mono",monospace;opacity:.5;transition:opacity .35s,fill .35s}
+  .edge-label.is-hot{opacity:1;fill:var(--warn)}
+
+  /* lista z reorderingiem */
+  .rank-list{position:relative;transition:height .55s cubic-bezier(.22,.61,.36,1)}
+  .rank-item{position:absolute;left:0;right:0;height:40px;
+    transition:transform .65s cubic-bezier(.22,.61,.36,1),opacity .4s,border-color .4s}
+  .rank-item.is-cut{opacity:.16}
+  .rank-item.is-kept{border-color:rgba(108,140,255,.45)}
+  .score-bar{transition:width .7s cubic-bezier(.22,.61,.36,1)}
+
+  .tl-section{animation:slidein .35s cubic-bezier(.22,.61,.36,1) both}
+  @keyframes slidein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .caret::after{content:'';display:inline-block;width:7px;height:1.05em;background:var(--live);
+    vertical-align:-2px;margin-left:2px;animation:blink 1s steps(2) infinite}
+  @keyframes blink{50%{opacity:0}}
+
+  .cite{cursor:pointer;transition:background .2s,border-color .2s}
+  .cite:hover,.cite.is-on{background:rgba(108,140,255,.16);border-color:rgba(108,140,255,.5)}
+  .chunk-row.is-highlit{border-color:rgba(108,140,255,.6);background:rgba(108,140,255,.07)}
+  .example:hover{border-color:var(--line2);background:var(--raised)}
+
+  @media (prefers-reduced-motion: reduce){
+    *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+  }
+</style>
+
+<!-- poniżej lg strona scrolluje normalnie; od lg w górę wszystko mieści się w 100vh -->
+<body class="text-fg lg:h-screen lg:overflow-hidden lg:flex lg:flex-col">
+
+<!-- ══ nagłówek ══ -->
+<header class="shrink-0 border-b border-line">
+  <div class="mx-auto max-w-[1440px] px-5 h-12 flex items-center gap-3">
+    <span class="text-[14.5px] font-semibold tracking-tight whitespace-nowrap">Agentic RAG</span>
+    <span class="text-[12.5px] text-fg3 truncate hidden xl:block" data-i18n="tagline"></span>
+
+    <div class="ml-auto flex items-center gap-1.5">
+      <div class="hidden md:flex items-center gap-2 px-2.5 h-7 rounded-lg border border-line bg-panel">
+        <span class="w-1.5 h-1.5 rounded-full bg-ok"></span>
+        <span class="font-mono text-[10.5px] text-fg2">RTX 2050</span>
+        <span class="font-mono text-[10.5px] text-fg3" id="hdrVram">0 MB</span>
+      </div>
+      <div class="hidden sm:flex items-center gap-1.5 px-2.5 h-7 rounded-lg border border-line bg-panel">
+        <span class="text-[11.5px] text-fg2" data-i18n="kb"></span>
+        <span class="font-mono text-[10.5px] text-fg3">8</span>
+      </div>
+      <div class="flex items-center h-7 rounded-lg border border-line bg-panel p-0.5">
+        <button class="spd h-6 px-1.5 rounded-[5px] font-mono text-[10px] transition" data-spd="1">1×</button>
+        <button class="spd h-6 px-1.5 rounded-[5px] font-mono text-[10px] transition" data-spd="2">2×</button>
+        <button class="spd h-6 px-1.5 rounded-[5px] font-mono text-[10px] transition" data-spd="4">4×</button>
+      </div>
+      <div class="flex items-center h-7 rounded-lg border border-line bg-panel p-0.5" role="group" aria-label="Language">
+        <button data-lang="pl" class="langbtn h-6 px-2 rounded-[5px] text-[11.5px] font-medium transition">PL</button>
+        <button data-lang="en" class="langbtn h-6 px-2 rounded-[5px] text-[11.5px] font-medium transition">EN</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ══ graf ══ -->
+<section class="shrink-0 border-b border-line bg-panel/50">
+  <div class="mx-auto max-w-[1440px] px-5 pt-2 pb-1">
+    <div class="flex items-center gap-3 h-5">
+      <h2 class="text-[11.5px] font-medium text-fg3" data-i18n="graphTitle"></h2>
+      <span id="loopBadge" class="hidden items-center gap-1 px-1.5 h-[19px] rounded border border-warn/40 bg-warn/10 text-warn font-mono text-[10px]">
+        <span data-i18n="loopBadge"></span><span id="loopCount">1/3</span>
+      </span>
+      <div class="ml-auto flex items-center gap-4 font-mono text-[10.5px] text-fg3">
+        <span><span data-i18n="latency"></span> <span id="hdrLatency" class="text-fg2">0.00s</span></span>
+        <span class="hidden sm:inline"><span data-i18n="tokens"></span> <span id="hdrTokens" class="text-fg2">0</span></span>
+        <button id="resetBtn" class="text-fg3 hover:text-fg2 transition" data-i18n="reset"></button>
+      </div>
+    </div>
+
+    <svg viewBox="0 0 1400 192" class="w-full h-auto" role="img" aria-labelledby="graphDesc">
+      <desc id="graphDesc" data-i18n="graphDesc"></desc>
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="context-stroke" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+      </defs>
+
+      <g class="edge" data-edge="e1"><path class="edge-base" d="M190 112 H222" marker-end="url(#ah)"/><path class="edge-flow" d="M190 112 H222"/></g>
+      <g class="edge" data-edge="e2"><path class="edge-base" d="M380 112 H412" marker-end="url(#ah)"/><path class="edge-flow" d="M380 112 H412"/></g>
+      <g class="edge" data-edge="e3"><path class="edge-base" d="M570 112 H602" marker-end="url(#ah)"/><path class="edge-flow" d="M570 112 H602"/></g>
+      <g class="edge is-loop" data-edge="e4"><path class="edge-base" d="M685 88 V38 H578" marker-end="url(#ah)"/><path class="edge-flow" d="M685 88 V38 H578"/></g>
+      <g class="edge is-loop" data-edge="e5"><path class="edge-base" d="M420 38 H305 V80" marker-end="url(#ah)"/><path class="edge-flow" d="M420 38 H305 V80"/></g>
+      <g class="edge" data-edge="e6"><path class="edge-base" d="M760 112 H792" marker-end="url(#ah)"/><path class="edge-flow" d="M760 112 H792"/></g>
+      <g class="edge" data-edge="e7"><path class="edge-base" d="M115 136 V178 H830 V144" marker-end="url(#ah)"/><path class="edge-flow" d="M115 136 V178 H830 V144"/></g>
+      <g class="edge" data-edge="e8"><path class="edge-base" d="M950 112 H982" marker-end="url(#ah)"/><path class="edge-flow" d="M950 112 H982"/></g>
+      <g class="edge" data-edge="e9"><path class="edge-base" d="M1140 112 H1172" marker-end="url(#ah)"/><path class="edge-flow" d="M1140 112 H1172"/></g>
+      <g class="edge is-loop" data-edge="e10"><path class="edge-base" d="M1065 136 V162 H920 V144" marker-end="url(#ah)"/><path class="edge-flow" d="M1065 136 V162 H920 V144"/></g>
+
+      <text class="edge-label" data-lbl="e7"  x="430" y="171" text-anchor="middle" data-i18n="lblSkip"></text>
+      <text class="edge-label" data-lbl="e4"  x="628" y="31"  text-anchor="middle" data-i18n="lblRejected"></text>
+      <text class="edge-label" data-lbl="e6"  x="776" y="104" text-anchor="middle" data-i18n="lblRelevant"></text>
+      <text class="edge-label" data-lbl="e10" x="990" y="155" text-anchor="middle" data-i18n="lblHalluc"></text>
+
+      <g class="gnode" data-node="router" data-state="idle">
+        <rect class="gnode-ring" x="40" y="88" width="150" height="48" rx="10"/>
+        <rect class="gnode-box"  x="40" y="88" width="150" height="48" rx="10"/>
+        <text class="gnode-title" x="115" y="107" text-anchor="middle">Router</text>
+        <text class="gnode-meta"  x="115" y="124" text-anchor="middle">—</text>
+      </g>
+      <g class="gnode" data-node="retrieve" data-state="idle">
+        <rect class="gnode-ring" x="230" y="88" width="150" height="48" rx="10"/>
+        <rect class="gnode-box"  x="230" y="88" width="150" height="48" rx="10"/>
+        <text class="gnode-title" x="305" y="107" text-anchor="middle">Retrieve</text>
+        <text class="gnode-meta"  x="305" y="124" text-anchor="middle">—</text>
+      </g>
+      <g class="gnode" data-node="local_rerank" data-state="idle">
+        <rect class="gnode-ring" x="420" y="88" width="150" height="48" rx="10"/>
+        <rect class="gnode-box"  x="420" y="88" width="150" height="48" rx="10"/>
+        <text class="gnode-title" x="495" y="107" text-anchor="middle">Rerank</text>
+        <text class="gnode-meta"  x="495" y="124" text-anchor="middle">—</text>
+      </g>
+      <g class="gnode" data-node="grade_documents" data-state="idle">
+        <rect class="gnode-ring" x="610" y="88" width="150" height="48" rx="10"/>
+        <rect class="gnode-box"  x="610" y="88" width="150" height="48" rx="10"/>
+        <text class="gnode-title" x="685" y="107" text-anchor="middle">Grade</text>
+        <text class="gnode-meta"  x="685" y="124" text-anchor="middle">—</text>
+      </g>
+      <g class="gnode" data-node="rewrite_query" data-state="idle">
+        <rect class="gnode-ring" x="420" y="14" width="150" height="48" rx="10"/>
+        <rect class="gnode-box"  x="420" y="14" width="150" height="48" rx="10"/>
+        <text class="gnode-title" x="495" y="33" text-anchor="middle">Rewrite</text>
+        <text class="gnode-meta"  x="495" y="50" text-anchor="middle">—</text>
+      </g>
+      <g class="gnode" data-node="generate" data-state="idle">
+        <rect class="gnode-ring" x="800" y="88" width="150" height="48" rx="10"/>
+        <rect class="gnode-box"  x="800" y="88" width="150" height="48" rx="10"/>
+        <text class="gnode-title" x="875" y="107" text-anchor="middle">Generate</text>
+        <text class="gnode-meta"  x="875" y="124" text-anchor="middle">—</text>
+      </g>
+      <g class="gnode" data-node="hallucination_check" data-state="idle">
+        <rect class="gnode-ring" x="990" y="88" width="150" height="48" rx="10"/>
+        <rect class="gnode-box"  x="990" y="88" width="150" height="48" rx="10"/>
+        <text class="gnode-title" x="1065" y="107" text-anchor="middle">Guard</text>
+        <text class="gnode-meta"  x="1065" y="124" text-anchor="middle">—</text>
+      </g>
+      <g class="gnode" data-node="__end" data-state="idle">
+        <rect class="gnode-box" x="1180" y="88" width="110" height="48" rx="10"/>
+        <text class="gnode-title" x="1235" y="116" text-anchor="middle" data-i18n="nodeEnd"></text>
+      </g>
+    </svg>
+  </div>
+</section>
+
+<!-- ══ dwie kolumny — scrolluje się tylko ich wnętrze ══ -->
+<main class="lg:flex-1 lg:min-h-0 mx-auto w-full max-w-[1440px] px-5 py-3 grid gap-3 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+
+  <div class="rounded-xl border border-line bg-panel flex flex-col min-h-0 min-w-0 lg:h-full">
+    <div class="flex-1 min-h-0 overflow-y-auto px-5 py-4">
+      <div id="emptyState" class="h-full flex flex-col justify-center">
+        <h1 class="text-[18px] font-semibold tracking-tight mb-2" data-i18n="emptyTitle"></h1>
+        <p class="text-[13.5px] leading-relaxed text-fg2 max-w-[54ch]" data-i18n="emptyBody"></p>
+        <p class="text-[12.5px] leading-relaxed text-fg3 mt-3 max-w-[54ch]" data-i18n="emptyHint"></p>
+      </div>
+
+      <div id="answerBody" class="hidden">
+        <p class="text-[12px] text-fg3 mb-1" data-i18n="askedLabel"></p>
+        <p id="askedText" class="text-[14.5px] font-medium mb-4 leading-snug"></p>
+        <div id="answerText" class="text-[14px] leading-[1.7] text-fg whitespace-pre-wrap"></div>
+        <div id="citeWrap" class="hidden mt-4 pt-3 border-t border-line">
+          <p class="text-[11.5px] text-fg3 mb-2" data-i18n="citeLabel"></p>
+          <div id="citeList" class="flex flex-wrap gap-1.5"></div>
+        </div>
+        <div id="verdictWrap" class="hidden mt-3 flex flex-wrap gap-1.5"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="rounded-xl border border-line bg-panel flex flex-col min-h-0 min-w-0 lg:h-full">
+    <div class="flex items-center gap-2 px-4 h-9 border-b border-line shrink-0">
+      <h2 class="text-[12px] font-medium text-fg2" data-i18n="inspector"></h2>
+      <span id="sessionId" class="ml-auto font-mono text-[10px] text-fg3"></span>
+    </div>
+    <div id="timeline" class="flex-1 min-h-0 overflow-y-auto p-3 flex flex-col gap-2.5"></div>
+  </div>
+</main>
+
+<!-- ══ belka wejścia ══ -->
+<footer class="shrink-0 border-t border-line bg-panel/50">
+  <div class="mx-auto max-w-[1440px] px-5 py-2.5 flex items-center gap-2">
+    <div class="hidden md:flex items-center gap-1.5 shrink-0">
+      <button class="example h-9 px-3 rounded-lg border border-line bg-bg text-[12.5px] transition" data-run="simple" data-i18n="ex1"></button>
+      <button class="example h-9 px-3 rounded-lg border border-warn/35 bg-warn/[0.05] text-[12.5px] transition flex items-center gap-1.5" data-run="loop">
+        <span class="w-1.5 h-1.5 rounded-full bg-warn"></span><span data-i18n="ex2"></span>
+      </button>
+      <button class="example h-9 px-3 rounded-lg border border-line bg-bg text-[12.5px] transition" data-run="direct" data-i18n="ex3"></button>
+    </div>
+    <input id="queryInput" type="text" class="flex-1 min-w-0 h-9 rounded-lg border border-line bg-bg px-3 text-[13px] placeholder:text-fg3 focus:border-live/60 outline-none transition">
+    <button id="sendBtn" class="shrink-0 h-9 px-4 rounded-lg bg-fg text-bg text-[13px] font-semibold hover:opacity-90 disabled:opacity-40 transition" data-i18n="send"></button>
+  </div>
+</footer>
+
+<script>
+/* ═══ i18n ═══ */
+const I18N = {
+  pl: {
+    tagline:'LangGraph · Parent-Document Retrieval · lokalny reranker CUDA',
+    kb:'Baza wiedzy', graphTitle:'Graf stanu', loopBadge:'pętla ', latency:'czas', tokens:'tokeny',
+    nodeEnd:'Koniec', reset:'reset',
+    graphDesc:'Graf stanów agenta: router, pobieranie, reranking, ocena, autokorekta, generowanie i audyt.',
+    lblSkip:'pomija RAG', lblRejected:'odrzucone', lblRelevant:'trafne', lblHalluc:'halucynacja',
+    emptyTitle:'Zobacz, jak agent podejmuje decyzje',
+    emptyBody:'Każde zapytanie przechodzi przez graf stanów widoczny powyżej. Gdy pobrane fragmenty okażą się nietrafne, agent przepisuje pytanie i wraca do bazy — zamiast zgadywać.',
+    emptyHint:'Zacznij od zapytania z bursztynową kropką: ono wymusza pętlę autokorekty.',
+    askedLabel:'Pytanie', citeLabel:'Źródła użyte w odpowiedzi',
+    ex1:'zysk netto', ex2:'karty do grania', ex3:'w euro',
+    send:'Wyślij', inspector:'Przebieg',
+    nRouter:'Router', nRetrieve:'Pobieranie', nRerank:'Reranking na GPU',
+    nGrade:'Ocena fragmentów', nRewrite:'Autokorekta zapytania',
+    nGenerate:'Synteza odpowiedzi', nGuard:'Audyt halucynacji',
+    running:'pracuje', decisionRetrieve:'wymaga faktów z bazy → pobieranie',
+    decisionDirect:'odpowiedź z historii rozmowy → pomija RAG',
+    candidates:'kandydatów z wektorówki', pass:'przebieg',
+    rerankHint:'Cross-Encoder przelicza wszystkie pary pytanie–fragment i przestawia kolejność. Zostają cztery.',
+    kept:'zachowane', cut:'odrzucone przez reranker',
+    gradeHint:'Każdy fragment oceniany osobno, równolegle.',
+    relevant:'trafny', irrelevant:'nietrafny',
+    allRejected:'Żaden fragment nie przeszedł oceny. Agent przepisuje zapytanie.',
+    rwFrom:'było', rwTo:'po korekcie',
+    genHint:'Odpowiedź budowana wyłącznie z zacytowanych fragmentów.',
+    grounded:'ugruntowana w źródłach', useful:'odpowiada na pytanie', table:'tabela'
+  },
+  en: {
+    tagline:'LangGraph · parent-document retrieval · local CUDA reranker',
+    kb:'Knowledge base', graphTitle:'State graph', loopBadge:'loop ', latency:'elapsed', tokens:'tokens',
+    nodeEnd:'End', reset:'reset',
+    graphDesc:'Agent state graph: router, retrieval, reranking, grading, self-correction, generation and audit.',
+    lblSkip:'skips RAG', lblRejected:'rejected', lblRelevant:'relevant', lblHalluc:'hallucination',
+    emptyTitle:'Watch the agent make decisions',
+    emptyBody:'Every question runs through the state graph above. When the retrieved passages turn out to be off-target, the agent rewrites the question and goes back to the index instead of guessing.',
+    emptyHint:'Start with the query marked by the amber dot — it forces the self-correction loop.',
+    askedLabel:'Question', citeLabel:'Sources used in this answer',
+    ex1:'net income', ex2:'gaming cards', ex3:'in euros',
+    send:'Send', inspector:'Run',
+    nRouter:'Router', nRetrieve:'Retrieval', nRerank:'GPU reranking',
+    nGrade:'Passage grading', nRewrite:'Query rewrite',
+    nGenerate:'Answer synthesis', nGuard:'Hallucination audit',
+    running:'running', decisionRetrieve:'needs facts from the index → retrieve',
+    decisionDirect:'answerable from conversation history → skips RAG',
+    candidates:'candidates from the vector store', pass:'pass',
+    rerankHint:'The cross-encoder scores every question–passage pair and reorders them. Four survive.',
+    kept:'kept', cut:'cut by the reranker',
+    gradeHint:'Each passage graded separately, in parallel.',
+    relevant:'relevant', irrelevant:'not relevant',
+    allRejected:'No passage passed grading. The agent rewrites the query.',
+    rwFrom:'before', rwTo:'rewritten',
+    genHint:'The answer is built only from the cited passages.',
+    grounded:'grounded in sources', useful:'answers the question', table:'table'
+  }
+};
+let LANG='pl';
+const t = k => (I18N[LANG][k] ?? k);
+function applyLang(){
+  document.documentElement.lang = LANG;
+  document.querySelectorAll('[data-i18n]').forEach(el => el.textContent = t(el.dataset.i18n));
+  document.getElementById('queryInput').placeholder =
+    LANG==='pl' ? 'Zadaj pytanie o dokumenty w bazie…' : 'Ask a question about the indexed documents…';
+  document.querySelectorAll('.langbtn').forEach(b=>{
+    const on = b.dataset.lang===LANG;
+    b.classList.toggle('bg-raised',on); b.classList.toggle('text-fg',on); b.classList.toggle('text-fg3',!on);
+  });
+}
+
+/* ═══ dane demo (imitują ładunki SSE) ═══ */
+const DOCS={q10:'nvidia_q3_fy25_10q.md',ar:'alphabet_annual_report_2024.md',eu:'eu_ai_act_art5.md',aws:'aws_earnings_2024.md'};
+const C=(id,file,prev,table=false)=>({id,file,prev,table});
+
+const POOL_GAMING_BAD=[
+  C('c1',DOCS.q10,'Data Center revenue reached $30.8B, up 112% year over year…',true),
+  C('c2',DOCS.ar,'Google Cloud revenue grew to $11.4B in the fourth quarter…'),
+  C('c3',DOCS.q10,'Gross margin for the quarter was 74.6%, compared with 74.0%…'),
+  C('c4',DOCS.aws,'AWS segment operating income was $10.4B for the period…'),
+  C('c5',DOCS.q10,'Cash flow from operating activities totalled $17.6B…',true),
+  C('c6',DOCS.ar,'Risk factors include dependence on advertising revenue…'),
+  C('c7',DOCS.q10,'Research and development expenses increased to $3.39B…'),
+  C('c8',DOCS.eu,'Article 5 prohibits social scoring by public authorities…'),
+  C('c9',DOCS.aws,'Capital expenditure guidance was raised for the next year…'),
+  C('c10',DOCS.ar,'Headcount at the end of the period was 183,323 employees…')];
+const POOL_GAMING_GOOD=[
+  C('g1',DOCS.q10,'Gaming revenue was $3.28B, up 15% from a year ago…',true),
+  C('g2',DOCS.q10,'Segment results: Gaming, Data Center, Professional Visualization…',true),
+  C('g3',DOCS.q10,'GeForce RTX 40 Series demand remained strong through the quarter…'),
+  C('g4',DOCS.q10,'Data Center revenue reached $30.8B, up 112% year over year…',true),
+  C('g5',DOCS.ar,'Google Cloud revenue grew to $11.4B in the fourth quarter…'),
+  C('g6',DOCS.q10,'Gross margin for the quarter was 74.6%…'),
+  C('g7',DOCS.aws,'AWS segment operating income was $10.4B…'),
+  C('g8',DOCS.q10,'Research and development expenses increased to $3.39B…'),
+  C('g9',DOCS.eu,'Article 5 prohibits social scoring by public authorities…'),
+  C('g10',DOCS.ar,'Risk factors include dependence on advertising revenue…')];
+const POOL_NETINCOME=[
+  C('n1',DOCS.q10,'Net income was $19.31B, compared with $9.24B a year ago…',true),
+  C('n2',DOCS.q10,'Condensed consolidated statements of income, three months ended…',true),
+  C('n3',DOCS.q10,'Diluted earnings per share were $0.78 for the quarter…',true),
+  C('n4',DOCS.q10,'Operating income was $21.87B for the third quarter…',true),
+  C('n5',DOCS.q10,'Gross margin for the quarter was 74.6%…'),
+  C('n6',DOCS.ar,'Alphabet net income for the fiscal year was $100.1B…'),
+  C('n7',DOCS.aws,'AWS segment operating income was $10.4B…'),
+  C('n8',DOCS.q10,'Cash flow from operating activities totalled $17.6B…',true),
+  C('n9',DOCS.eu,'Article 5 prohibits social scoring by public authorities…'),
+  C('n10',DOCS.ar,'Headcount at the end of the period was 183,323 employees…')];
+
+const ANSWERS={
+  netincome:{
+    pl:'Zysk netto NVIDIA w trzecim kwartale roku fiskalnego 2025 wyniósł **19,31 mld USD**, wobec 9,24 mld USD rok wcześniej — wzrost o 109%.\n\nZysk operacyjny za ten sam okres to 21,87 mld USD, a rozwodniony zysk na akcję 0,78 USD. Marża brutto utrzymała się na poziomie 74,6%.',
+    en:"NVIDIA's net income for the third quarter of fiscal 2025 was **$19.31B**, against $9.24B a year earlier — a 109% increase.\n\nOperating income for the same period was $21.87B and diluted earnings per share came to $0.78. Gross margin held at 74.6%."},
+  gaming:{
+    pl:'Segment Gaming przyniósł w Q3 FY25 **3,28 mld USD** przychodu, o 15% więcej niż rok wcześniej.\n\nDla porównania: segment Data Center wygenerował 30,8 mld USD, czyli ponad dziewięciokrotnie więcej. Karty do grania nie są już głównym źródłem przychodów NVIDII.',
+    en:'The Gaming segment brought in **$3.28B** of revenue in Q3 FY25, up 15% year over year.\n\nFor comparison, Data Center generated $30.8B — more than nine times as much. Gaming cards are no longer NVIDIA\u2019s main source of revenue.'},
+  euro:{
+    pl:'Przy kursie 1 EUR = 1,08 USD zysk netto 19,31 mld USD to około **17,9 mld EUR**.\n\nTa liczba pochodzi z poprzedniej odpowiedzi w tej rozmowie, nie z nowego przeszukania bazy — dlatego router pominął potok RAG.',
+    en:'At 1 EUR = 1.08 USD, net income of $19.31B is roughly **€17.9B**.\n\nThat figure comes from the previous answer in this conversation rather than a fresh search, which is why the router skipped the RAG pipeline.'}
+};
+
+const SCEN={
+  simple:{
+    query:{pl:'Jaki był zysk netto NVIDIA w Q3 FY25?',en:"What was NVIDIA's net income in Q3 FY25?"},
+    answer:'netincome',
+    steps:[
+      {node:'router',dur:820,edge:null,data:{decision:'retrieve'}},
+      {node:'retrieve',dur:1150,edge:'e1',data:{pool:POOL_NETINCOME,pass:1}},
+      {node:'local_rerank',dur:3900,edge:'e2',data:{order:['n1','n4','n3','n2','n5','n8','n6','n7','n10','n9'],
+        scores:{n1:.94,n4:.88,n3:.81,n2:.77,n5:.41,n8:.33,n6:.28,n7:.19,n10:.11,n9:.06},vram:412}},
+      {node:'grade_documents',dur:3100,edge:'e3',data:{verdicts:[
+        {id:'n1',ok:true,why:{pl:'Zawiera dokładną wartość zysku netto za kwartał.',en:'Contains the exact net income figure for the quarter.'}},
+        {id:'n4',ok:true,why:{pl:'Podaje zysk operacyjny, przydatny kontekst.',en:'Gives operating income, useful context.'}},
+        {id:'n3',ok:true,why:{pl:'Zysk na akcję potwierdza rząd wielkości.',en:'EPS corroborates the magnitude.'}},
+        {id:'n2',ok:false,why:{pl:'Nagłówek tabeli bez wartości liczbowych.',en:'Table header with no figures.'}}]}},
+      {node:'generate',dur:6200,edge:'e6',data:{cites:['n1','n4','n3']}},
+      {node:'hallucination_check',dur:2500,edge:'e8',data:{grounded:true,useful:true}}]},
+  loop:{
+    query:{pl:'Ile NVIDIA zarobiła na kartach do grania?',en:'How much did NVIDIA make on gaming cards?'},
+    answer:'gaming',
+    steps:[
+      {node:'router',dur:790,edge:null,data:{decision:'retrieve'}},
+      {node:'retrieve',dur:1100,edge:'e1',data:{pool:POOL_GAMING_BAD,pass:1}},
+      {node:'local_rerank',dur:3700,edge:'e2',data:{order:['c1','c3','c5','c7','c4','c9','c2','c10','c6','c8'],
+        scores:{c1:.52,c3:.44,c5:.39,c7:.31,c4:.27,c9:.22,c2:.18,c10:.12,c6:.09,c8:.04},vram:408}},
+      {node:'grade_documents',dur:3000,edge:'e3',data:{verdicts:[
+        {id:'c1',ok:false,why:{pl:'Dotyczy Data Center, nie segmentu Gaming.',en:'Covers Data Center, not the Gaming segment.'}},
+        {id:'c3',ok:false,why:{pl:'Marża brutto łącznie, bez podziału na segmenty.',en:'Blended gross margin, no segment split.'}},
+        {id:'c5',ok:false,why:{pl:'Przepływy pieniężne, brak związku z pytaniem.',en:'Cash flow, unrelated to the question.'}},
+        {id:'c7',ok:false,why:{pl:'Koszty B+R, nie przychód segmentu.',en:'R&D spend, not segment revenue.'}}]}},
+      {node:'rewrite_query',dur:1500,edge:'e4',data:{
+        from:{pl:'Ile NVIDIA zarobiła na kartach do grania?',en:'How much did NVIDIA make on gaming cards?'},
+        to:{pl:'Przychody segmentu Gaming NVIDIA w Q3 FY25',en:'NVIDIA Gaming segment revenue Q3 FY25'}}},
+      {node:'retrieve',dur:1000,edge:'e5',data:{pool:POOL_GAMING_GOOD,pass:2}},
+      {node:'local_rerank',dur:3400,edge:'e2',data:{order:['g1','g2','g3','g4','g6','g8','g5','g7','g10','g9'],
+        scores:{g1:.96,g2:.89,g3:.74,g4:.61,g6:.35,g8:.24,g5:.17,g7:.13,g10:.08,g9:.03},vram:431}},
+      {node:'grade_documents',dur:2900,edge:'e3',data:{verdicts:[
+        {id:'g1',ok:true,why:{pl:'Bezpośrednio podaje przychód segmentu Gaming.',en:'States Gaming segment revenue directly.'}},
+        {id:'g2',ok:true,why:{pl:'Tabela z podziałem na segmenty.',en:'Segment breakdown table.'}},
+        {id:'g3',ok:true,why:{pl:'Kontekst popytu na RTX 40.',en:'Context on RTX 40 demand.'}},
+        {id:'g4',ok:false,why:{pl:'Data Center — inny segment.',en:'Data Center — different segment.'}}]}},
+      {node:'generate',dur:6000,edge:'e6',data:{cites:['g1','g2','g4']}},
+      {node:'hallucination_check',dur:2600,edge:'e8',data:{grounded:true,useful:true}}]},
+  direct:{
+    query:{pl:'Podaj tę kwotę w euro',en:'Give me that figure in euros'},
+    answer:'euro',
+    steps:[
+      {node:'router',dur:900,edge:null,data:{decision:'direct'}},
+      {node:'generate',dur:4200,edge:'e7',data:{cites:[]}},
+      {node:'hallucination_check',dur:2200,edge:'e8',data:{grounded:true,useful:true}}]}
+};
+
+/* ═══ sterowanie ═══ */
+const $=s=>document.querySelector(s);
+const el=(tag,cls,html)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(html!=null)n.innerHTML=html;return n;};
+const NODE_LABEL={router:'nRouter',retrieve:'nRetrieve',local_rerank:'nRerank',
+  grade_documents:'nGrade',rewrite_query:'nRewrite',generate:'nGenerate',hallucination_check:'nGuard'};
+const ALL_CHUNKS={};
+[...POOL_GAMING_BAD,...POOL_GAMING_GOOD,...POOL_NETINCOME].forEach(c=>ALL_CHUNKS[c.id]=c);
+const STEP_H=44;
+
+let speed=1, running=false, abort=false, timers=[];
+const sleep=ms=>new Promise(r=>timers.push(setTimeout(r,ms/speed)));
+
+function resetAll(){
+  abort=true; timers.forEach(clearTimeout); timers=[]; running=false;
+  document.querySelectorAll('.gnode').forEach(n=>{n.dataset.state='idle';const m=n.querySelector('.gnode-meta');if(m)m.textContent='—';});
+  document.querySelectorAll('.edge').forEach(e=>e.classList.remove('is-taken','is-flowing'));
+  document.querySelectorAll('.edge-label').forEach(l=>l.classList.remove('is-hot'));
+  $('#timeline').innerHTML='';
+  $('#emptyState').classList.remove('hidden'); $('#answerBody').classList.add('hidden');
+  $('#answerText').textContent=''; $('#citeWrap').classList.add('hidden');
+  $('#verdictWrap').classList.add('hidden'); $('#verdictWrap').innerHTML='';
+  $('#loopBadge').classList.add('hidden'); $('#loopBadge').classList.remove('flex');
+  $('#hdrLatency').textContent='0.00s'; $('#hdrVram').textContent='0 MB';
+  $('#hdrTokens').textContent='0'; $('#sessionId').textContent='';
+  $('#sendBtn').disabled=false;
+}
+function setNode(node,state,meta){
+  const g=document.querySelector(`.gnode[data-node="${node}"]`); if(!g)return;
+  g.dataset.state=state;
+  if(meta!=null){const m=g.querySelector('.gnode-meta'); if(m)m.textContent=meta;}
+}
+function flowEdge(id,on){
+  if(!id)return;
+  const e=document.querySelector(`.edge[data-edge="${id}"]`); if(!e)return;
+  e.classList.toggle('is-flowing',on); if(on)e.classList.add('is-taken');
+  const lbl=document.querySelector(`.edge-label[data-lbl="${id}"]`); if(lbl&&on)lbl.classList.add('is-hot');
+}
+
+function tlSection(node){
+  const tl=$('#timeline');
+  const sec=el('section','tl-section rounded-lg border border-line bg-bg overflow-hidden shrink-0');
+  sec.innerHTML=`
+    <div class="flex items-center gap-2 px-2.5 h-8 border-b border-line">
+      <span class="w-1.5 h-1.5 rounded-full bg-live shrink-0" data-dot></span>
+      <span class="text-[12px] font-medium">${t(NODE_LABEL[node])}</span>
+      <span class="ml-auto font-mono text-[10px] text-live" data-timer>${t('running')}…</span>
+    </div>
+    <div class="px-2.5 py-2" data-body></div>`;
+  tl.append(sec);
+  return sec;
+}
+function tlClose(sec,ms){
+  sec.querySelector('[data-dot]').className='w-1.5 h-1.5 rounded-full bg-ok shrink-0';
+  const tm=sec.querySelector('[data-timer]');
+  tm.className='ml-auto font-mono text-[10px] text-fg3';
+  tm.textContent=(ms/1000).toFixed(2)+'s';
+}
+const scrollBottom=()=>{const tl=$('#timeline');tl.scrollTo({top:tl.scrollHeight,behavior:'smooth'});};
+const scrollTo=sec=>{const tl=$('#timeline');tl.scrollTo({top:sec.offsetTop-8,behavior:'smooth'});};
+
+function rowChunk(c,i){
+  const r=el('div','chunk-row rank-item rounded-md border border-line bg-panel px-2 flex items-center gap-2');
+  r.dataset.chunk=c.id;
+  r.innerHTML=`
+    <span class="font-mono text-[9.5px] text-fg3 w-3.5 shrink-0" data-idx>${i+1}</span>
+    <span class="font-mono text-[10.5px] text-fg2 shrink-0 max-w-[40%] truncate">${c.file}</span>
+    ${c.table?`<span class="shrink-0 px-1 rounded bg-raised font-mono text-[9px] text-fg3">${t('table')}</span>`:''}
+    <span class="text-[10.5px] text-fg3 truncate flex-1 min-w-0">${c.prev}</span>
+    <span class="w-10 h-[3px] rounded bg-raised overflow-hidden shrink-0"><span class="score-bar block h-full bg-live/70" style="width:0"></span></span>
+    <span class="font-mono text-[10px] text-fg3 w-7 text-right shrink-0" data-score></span>`;
+  return r;
+}
+function layoutList(list,order){
+  order.forEach((id,i)=>{
+    const item=list.querySelector(`[data-chunk="${id}"]`); if(!item)return;
+    item.style.transform=`translateY(${i*STEP_H}px)`;
+    const idx=item.querySelector('[data-idx]'); if(idx)idx.textContent=i+1;
+  });
+  list.style.height=(order.length*STEP_H-4)+'px';
+}
+function renderRetrieve(body,d){
+  body.innerHTML=`<p class="font-mono text-[10.5px] text-fg3 mb-1.5">${d.pool.length} ${t('candidates')} · ${t('pass')} ${d.pass}</p>`;
+  const list=el('div','rank-list'); body.append(list);
+  d.pool.forEach((c,i)=>list.append(rowChunk(c,i)));
+  layoutList(list,d.pool.map(c=>c.id));
+}
+async function renderRerank(body,d,pool,sec){
+  body.innerHTML=`<p class="text-[11px] text-fg2 mb-1.5 leading-snug">${t('rerankHint')}</p>`;
+  const list=el('div','rank-list'); body.append(list);
+  pool.forEach((c,i)=>list.append(rowChunk(c,i)));
+  layoutList(list,pool.map(c=>c.id));
+  scrollTo(sec);
+  await sleep(700); if(abort)return;
+  layoutList(list,d.order);
+  d.order.forEach(id=>{
+    const it=list.querySelector(`[data-chunk="${id}"]`);
+    it.querySelector('[data-score]').textContent=d.scores[id].toFixed(2);
+    it.querySelector('.score-bar').style.width=(d.scores[id]*100)+'%';
+  });
+  $('#hdrVram').textContent=d.vram+' MB';
+  setNode('local_rerank','active',d.vram+' MB');
+  await sleep(1500); if(abort)return;
+  d.order.forEach((id,i)=>list.querySelector(`[data-chunk="${id}"]`).classList.add(i<4?'is-kept':'is-cut'));
+  await sleep(600); if(abort)return;
+  layoutList(list,d.order.slice(0,4));
+  d.order.slice(4).forEach(id=>{
+    const it=list.querySelector(`[data-chunk="${id}"]`);
+    it.style.transform=`translateY(${3*STEP_H}px)`; it.style.opacity='0';
+  });
+  body.append(el('p','mt-1.5 font-mono text-[10px] text-fg3',`4 ${t('kept')} · 6 ${t('cut')}`));
+}
+function renderGrade(body,d){
+  body.innerHTML=`<p class="text-[11px] text-fg2 mb-1.5 leading-snug">${t('gradeHint')}</p>`;
+  d.verdicts.forEach((v,i)=>{
+    const c=ALL_CHUNKS[v.id];
+    const row=el('div','chunk-row rounded-md border border-line bg-panel px-2 py-1.5 mb-1');
+    row.dataset.chunk=v.id;
+    row.style.opacity='0'; row.style.transition='opacity .3s';
+    row.innerHTML=`
+      <div class="flex items-center gap-1.5">
+        <span class="px-1 rounded font-mono text-[9px] ${v.ok?'bg-ok/15 text-ok':'bg-warn/15 text-warn'}">${v.ok?t('relevant'):t('irrelevant')}</span>
+        <span class="font-mono text-[10px] text-fg3 truncate">${c?c.file:v.id}</span>
+      </div>
+      <p class="text-[11px] text-fg2 mt-0.5 leading-snug">${v.why[LANG]}</p>`;
+    body.append(row);
+    timers.push(setTimeout(()=>{row.style.opacity='1';},(300+i*220)/speed));
+  });
+  if(d.verdicts.every(v=>!v.ok))
+    body.append(el('p','mt-1.5 text-[11px] text-warn leading-snug',t('allRejected')));
+}
+function renderRewrite(body,d){
+  body.innerHTML=`
+    <div class="rounded-md border border-line bg-panel px-2 py-1.5 mb-1">
+      <p class="font-mono text-[9px] text-fg3 mb-0.5">${t('rwFrom')}</p>
+      <p class="text-[11.5px] text-fg3 line-through decoration-fg3/50">${d.from[LANG]}</p>
+    </div>
+    <div class="rounded-md border border-warn/40 bg-warn/[0.06] px-2 py-1.5">
+      <p class="font-mono text-[9px] text-warn mb-0.5">${t('rwTo')}</p>
+      <p class="text-[11.5px] text-fg">${d.to[LANG]}</p>
+    </div>`;
+}
+
+function mdLite(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;')
+          .replace(/\*\*(.+?)\*\*/g,'<strong class="font-semibold text-white">$1</strong>');
+}
+async function streamAnswer(key,dur){
+  const full=ANSWERS[key][LANG], words=full.split(/(\s+)/), box=$('#answerText');
+  box.textContent=''; box.classList.add('caret');
+  const per=dur/words.length; let acc='',n=0;
+  for(const w of words){
+    if(abort)return;
+    acc+=w; n++;
+    box.innerHTML=mdLite(acc); $('#hdrTokens').textContent=n;
+    await sleep(per);
+  }
+  box.classList.remove('caret');
+}
+function renderCites(ids){
+  if(!ids.length)return;
+  const wrap=$('#citeList'); wrap.innerHTML='';
+  ids.forEach((id,i)=>{
+    const c=ALL_CHUNKS[id]; if(!c)return;
+    const chip=el('button','cite rounded-md border border-line bg-bg px-2 py-1 text-left');
+    chip.innerHTML=`<span class="font-mono text-[10px] text-live">[${i+1}]</span><span class="font-mono text-[10px] text-fg2 ml-1.5">${c.file}</span>`;
+    const hl=on=>{
+      chip.classList.toggle('is-on',on);
+      document.querySelectorAll(`.chunk-row[data-chunk="${id}"]`).forEach(r=>{
+        r.classList.toggle('is-highlit',on);
+        if(on)r.scrollIntoView({block:'nearest',behavior:'smooth'});
+      });
+    };
+    chip.addEventListener('mouseenter',()=>hl(true));
+    chip.addEventListener('mouseleave',()=>hl(false));
+    chip.addEventListener('focus',()=>hl(true));
+    chip.addEventListener('blur',()=>hl(false));
+    wrap.append(chip);
+  });
+  $('#citeWrap').classList.remove('hidden');
+}
+function renderVerdicts(d){
+  const w=$('#verdictWrap'); w.innerHTML='';
+  [[d.grounded,'grounded'],[d.useful,'useful']].forEach(([ok,key])=>{
+    w.append(el('span',
+      `inline-flex items-center gap-1.5 px-2 h-6 rounded-md border font-mono text-[10px] ${ok?'border-ok/35 bg-ok/10 text-ok':'border-bad/35 bg-bad/10 text-bad'}`,
+      `${ok?'✓':'✕'} ${t(key)}`));
+  });
+  w.classList.remove('hidden');
+}
+
+/* ═══ sterownik przebiegu ═══ */
+async function run(key){
+  resetAll(); abort=false; running=true;
+  $('#sendBtn').disabled=true;
+  const sc=SCEN[key];
+  $('#askedText').textContent=sc.query[LANG];
+  $('#emptyState').classList.add('hidden'); $('#answerBody').classList.remove('hidden');
+  $('#sessionId').textContent='session-'+Math.random().toString(36).slice(2,9);
+
+  const t0=performance.now();
+  const tick=setInterval(()=>{$('#hdrLatency').textContent=((performance.now()-t0)/1000).toFixed(2)+'s';},60);
+  timers.push(tick);
+
+  let lastPool=null, loops=0;
+
+  for(const st of sc.steps){
+    if(abort)break;
+    if(st.edge){flowEdge(st.edge,true); await sleep(500); if(abort)break;}
+    if(st.node==='rewrite_query'){
+      loops++;
+      const b=$('#loopBadge'); b.classList.remove('hidden'); b.classList.add('flex');
+      $('#loopCount').textContent=loops+'/3';
+    }
+    setNode(st.node,'active',t('running'));
+    const sec=tlSection(st.node), body=sec.querySelector('[data-body]');
+    scrollBottom();
+    const s0=performance.now();
+
+    if(st.node==='router'){
+      body.innerHTML=`<p class="text-[12px] leading-snug">${st.data.decision==='retrieve'?t('decisionRetrieve'):t('decisionDirect')}</p>`;
+      await sleep(st.dur);
+    } else if(st.node==='retrieve'){
+      lastPool=st.data.pool; renderRetrieve(body,st.data); scrollTo(sec); await sleep(st.dur);
+    } else if(st.node==='local_rerank'){
+      await renderRerank(body,st.data,lastPool,sec);
+    } else if(st.node==='grade_documents'){
+      renderGrade(body,st.data); scrollTo(sec); await sleep(st.dur);
+    } else if(st.node==='rewrite_query'){
+      renderRewrite(body,st.data); scrollBottom(); await sleep(st.dur);
+    } else if(st.node==='generate'){
+      body.innerHTML=`<p class="text-[11px] text-fg2 leading-snug">${t('genHint')}</p>`;
+      scrollBottom();
+      await streamAnswer(sc.answer,st.dur);
+      renderCites(st.data.cites);
+    } else if(st.node==='hallucination_check'){
+      body.innerHTML=''; scrollBottom(); await sleep(st.dur); renderVerdicts(st.data);
+    }
+
+    if(abort)break;
+    flowEdge(st.edge,false);
+    const ms=performance.now()-s0;
+    setNode(st.node,'done',(ms/1000).toFixed(2)+'s');
+    tlClose(sec,ms);
+  }
+
+  if(!abort){
+    flowEdge('e9',true); await sleep(500); flowEdge('e9',false);
+    setNode('__end','done'); scrollBottom();
+  }
+  clearInterval(tick);
+  $('#sendBtn').disabled=false; running=false;
+}
+
+/* ═══ zdarzenia ═══ */
+document.querySelectorAll('.example').forEach(b=>b.addEventListener('click',()=>{
+  $('#queryInput').value=SCEN[b.dataset.run].query[LANG];
+  run(b.dataset.run);
+}));
+$('#sendBtn').addEventListener('click',()=>{if(!running)run('simple');});
+$('#queryInput').addEventListener('keydown',e=>{if(e.key==='Enter'&&!running)run('simple');});
+$('#resetBtn').addEventListener('click',resetAll);
+document.querySelectorAll('.spd').forEach(b=>b.addEventListener('click',()=>{
+  speed=+b.dataset.spd;
+  document.querySelectorAll('.spd').forEach(x=>{
+    const on=x===b;
+    x.classList.toggle('bg-raised',on); x.classList.toggle('text-fg',on); x.classList.toggle('text-fg3',!on);
+  });
+}));
+document.querySelectorAll('.langbtn').forEach(b=>b.addEventListener('click',()=>{
+  LANG=b.dataset.lang; applyLang(); resetAll();
+}));
+
+applyLang();
+document.querySelector('.spd[data-spd="1"]').click();
+resetAll();
+</script>
