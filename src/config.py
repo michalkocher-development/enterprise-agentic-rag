@@ -5,7 +5,7 @@ import os
 from typing import Optional
 from dotenv import load_dotenv
 import torch
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Ładujemy zmienne z pliku .env do środowiska systemowego (dla LangSmith i SDK Google)
@@ -21,10 +21,29 @@ class AppSettings(BaseSettings):
         extra="ignore",
     )
 
-    # Google Gemini
-    google_api_key: str = Field(..., alias="GOOGLE_API_KEY")
+    # Google Gemini (obsługa obu nazw: GOOGLE_API_KEY oraz GEMINI_API_KEY)
+    google_api_key: str = Field(
+        default_factory=lambda: os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY") or "",
+        alias="GOOGLE_API_KEY",
+    )
+    gemini_api_key_alias: Optional[str] = Field(default=None, alias="GEMINI_API_KEY")
     gemini_model: str = Field(default="gemini-3-flash-preview", alias="GEMINI_MODEL")
     embedding_model: str = Field(default="gemini-embedding-001", alias="EMBEDDING_MODEL")
+
+    @model_validator(mode="after")
+    def resolve_api_keys(self) -> "AppSettings":
+        key = (
+            self.google_api_key
+            or self.gemini_api_key_alias
+            or os.getenv("GOOGLE_API_KEY")
+            or os.getenv("GEMINI_API_KEY")
+            or ""
+        )
+        self.google_api_key = key
+        if key:
+            os.environ["GOOGLE_API_KEY"] = key
+            os.environ["GEMINI_API_KEY"] = key
+        return self
 
     # LangSmith Observability
     langchain_tracing_v2: bool = Field(default=True, alias="LANGCHAIN_TRACING_V2")
