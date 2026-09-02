@@ -5,9 +5,10 @@
 ---
 
 ## 1. Bieżący Status
-* **Status Ogólny**: 🟢 **Projekt 1 ukończony z sukcesem!**
-* **Aktywny Projekt**: **Projekt 1 — Self-Corrective Agentic RAG z PyTorch Rerankerem i LangSmith**.
-* **Aktualny Krok**: Pełny potok agentowy przetestowany jednostkowo i integracyjnie (10/10 testów na zielono), CLI `src/run_agent.py` w pełni funkcjonalne z tracingiem w LangSmith. Gotowy do ewaluacji jakościowej (Moduł 5) lub przejścia do Projektu 2 (MLOps & Local AWS).
+* **Status Ogólny**: 🟢 **Projekt 1 opublikowany na GitHubie!**
+* **Aktywny Projekt**: **Projekt 1 — BigTech Financial Agentic RAG**.
+* **Repozytorium GitHub**: [https://github.com/michalkocher-development/bigtech-financial-agentic-rag](https://github.com/michalkocher-development/bigtech-financial-agentic-rag)
+* **Aktualny Krok**: Kod źródłowy, testy (14/14 passed), architektura hybrydowa PyTorch CUDA + Gemini 3 Flash oraz profesjonalne `README.md` zostały zacommitowane i wypchnięte do repozytorium. Ready for Project 2!
 
 ---
 
